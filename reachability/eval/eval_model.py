@@ -1,0 +1,48 @@
+from __future__ import annotations
+from dataclasses import dataclass
+import numpy as np
+from reachability.eval.metrics import *
+
+@dataclass
+class EvalConfig:
+    n_samples_per_H: int
+    n_bins_theta: int # how finely we discretize angle space when estimatig distributions
+    eps_hist: float # for KL div - prevents log(0)
+
+def evaluate_model(env, model, H_test: np.ndarray, cfg: EvalConfig, rng: np.random.Generator) -> dict:
+    """Evaluate on test H points:
+    - Draw S samples per H
+    - Compute error/coverage stats"""
+    S = cfg.n_samples_per_H
+    Qs = model.sample(H_test, n_samples=S, rng=rng)  # [B,S,3]
+    
+    err = hand_error(env, Qs, H_test) # [B,S]
+    err_mean = float(np.mean(err))
+    err_median = float(np.median(err))
+    err_p95 = float(np.quantile(err, 0.95))
+
+    th = implied_angles(env, Qs, H_test) # [B,S]
+
+    # per-H metrics
+    perH_max_gap = np.array([max_angle_gap(th[i]) for i in range(th.shape[0])], dtype=np.float64)
+    max_gap_mean = float(np.mean(perH_max_gap))
+    max_gap_p95 = float(np.quantile(perH_max_gap, 0.95))
+
+    # global KL to uniform over all angles
+    th_all = th.reshape(-1)
+    kl = kl_to_uniform(th_all, n_bins=cfg.n_bins_theta, eps=cfg.eps_hist)
+
+    # "uses latent" proxy (works for any stochastic sampler): fix one H and check variance over samples -- TODO: think about this more!
+    H0 = H_test[0:1]
+    Q0 = model.sample(H0, n_samples=2000, rng=rng)[0]  # [S,3]
+    var = var_Q(Q0)
+
+    return {
+        "hand_err/mean": err_mean,
+        "hand_err/median": err_median,
+        "hand_err/p95": err_p95,
+        "coverage/max_gap_mean": max_gap_mean,
+        "coverage/max_gap_p95": max_gap_p95,
+        "coverage/kl_to_uniform": kl,
+        "stochasticity/var_Q_fixed_H": var,
+    }

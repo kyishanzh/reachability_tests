@@ -1,0 +1,234 @@
+\documentclass{amsart}
+\usepackage[margin=1in]{geometry}
+
+\usepackage{amsthm, amsmath, amssymb}
+\usepackage[colorlinks]{hyperref}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{hyperref}
+\usepackage{courier}
+\usepackage{tikz}
+\usetikzlibrary{calc,matrix,arrows,decorations.markings}
+\usepackage{array}
+\usepackage{color}
+\usepackage{enumerate}
+\usepackage{nicefrac}
+\usepackage{listings}
+\bibliographystyle{plainurl}
+\usepackage{cite}
+\usepackage{mathtools}
+\usepackage{enumitem}
+
+\newlist{todolist}{itemize}{2}
+\setlist[todolist]{label=$\square$}
+
+\lstset{
+    basicstyle=\small\ttfamily,
+    keywordstyle=\color{blue},
+    language=python,
+    xleftmargin=16pt,
+}
+
+\topmargin=-0.5in
+\headheight=0in
+\pagestyle{plain}
+
+
+% ------   Theorem Styles -------
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{fact}[theorem]{Fact}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{construction}[theorem]{Construction}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{question}[theorem]{Question}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{setup}[theorem]{Setup}
+\theoremstyle{remark}
+\newtheorem*{remark}{Remark}
+
+\setlength{\parindent}{0pt}
+
+
+
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\abss}[1]{\lvert#1\rvert}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\snorm}[1]{\lVert#1\rVert}
+\newcommand{\ang}[1]{\left\langle #1 \right\rangle}
+\newcommand{\floor}[1]{\left\lfloor #1 \right\rfloor}
+\newcommand{\ceil}[1]{\left\lceil #1 \right\rceil}
+\newcommand{\paren}[1]{\left( #1 \right)}
+\newcommand{\sqb}[1]{\left[ #1 \right]}
+\newcommand{\set}[1]{\left\{ #1 \right\}}
+\newcommand{\setcond}[2]{\left\{ #1 \;\middle\vert\; #2 \right\}}
+\newcommand{\cond}[2]{\left( #1 \;\middle\vert\; #2 \right)}
+\newcommand{\sqcond}[2]{\left[ #1 \;\middle\vert\; #2 \right]}
+\newcommand{\one}{\mathbbm{1}}
+\newcommand{\wt}{\widetilde}
+\newcommand{\wh}{\widehat}
+
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\raggedbottom
+
+\title{Reachability Project Log :)}
+\author[]{}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Problem Description}
+
+Our goal is to learn \textit{where the robot should stand} given a desired grasp. 
+
+\subsection{Problem inputs} Formulating the problem, we are given as inputs:
+\begin{itemize}
+    \item $x_e \in SE(3)$: desired end-effector pose in world coordinates
+    \item $b \in SE(2)$: wheeled mobile base pose $(x, y, \gamma)$
+    \item $q \in \mathbb{R}^n$: arm joint configuration.
+\end{itemize}
+
+\subsection{Problem outputs} We want to find a range of feasible whole-body configurations that satisfy the following requirements:
+\begin{enumerate}
+    \item \textbf{IK feasibility:} $\text{forward kinematics}(b, q) = x_e$
+    \item \textbf{Visibility/sensing constraints:} The end-effector should lie within the camera's field of view and range (and un-occluded by the robot itself), i.e. $\text{visible}(b, q, x_e) = 1$
+    \item \textbf{Ball of feasible configurations:} We want a region in joint space around $(b,q)$ that keeps the hand in approximately the right pose and satisfies the above constraints. 
+\end{enumerate}
+
+Our target is to model some distribution $p(b, q\mid x_e)$ subject to these constraints $\uparrow$, ideally with some notion of pose quality (visibility, manipulability, clearance, etc.). 
+
+\section{Simplified problem}
+
+\subsection{Setup}
+
+Simple robot is a round thing with a fixed ``stick'' attached to it: a disk on the floor with a rigid stick of fixed length $L$ glued to it, and the stick rotates with the disk.
+\begin{itemize}
+    \item Configuration: $Q = x, y, \theta$ ($\mathbb{R}^2 \times S^1$)
+    \item Hand target: $H = h_x, h_y$ (point in $\mathbb{R}^2$)
+\end{itemize}
+
+In this setup, $H \in \mathbb{R}^2$ is the desired 2D point on the floor where we want the tip of the stick to be.
+
+\subsection{Forward kinematics}
+\[\text{hand}(x, y, \theta) \coloneq f(Q) = \begin{bmatrix}
+    x \\ y
+\end{bmatrix} + L \begin{bmatrix}
+    \cos \theta & \sin \theta
+\end{bmatrix}\]
+
+So the IK constraint (``hand hits the target'') is:
+\[H = \begin{bmatrix}
+    h_x \\ h_y
+\end{bmatrix} = \begin{bmatrix}
+    x \\ y 
+\end{bmatrix} + L \begin{bmatrix}
+    \cos \theta \\ \sin \theta
+\end{bmatrix}\]
+
+Rearranging shows that as $\theta$ varies, the base center $(x,y)$ traces out a circle of radius $L$ around the target point $H$: the set of feasible base positions for the robot to reach $H$ is a circle centered at $H$. 
+\[\text{Ground truth feasible set for a fixed $H$} \coloneq \{Q: f(Q)= H\}= \{(h_x - L\cos \theta, h_y - L \sin\theta, \theta): \theta \in [0, 2\pi)\}\]
+
+% Simple robot is a round thing with a fixed “stick” attached to it
+% - configuration : Q = x, y, theta
+% - hand target : H = x, y point
+
+\subsection{Approaches} We try the following approaches to model $p(Q \mid H)$:
+\begin{enumerate}
+    \item \textit{Nearest neighbors} (baseline):
+    \begin{itemize}
+        \item Given a dataset $\mathcal{D} = \{(H_i, Q_i)\}_{i=1}^N$: for a query $H'$,
+        \begin{enumerate}
+            \item Find indices of the $k$ nearest $H_i$ to $H'$ (under $||H_i - H'||$)
+            \item Return their associated $Q_i$'s (either all or sample one etc.)
+        \end{enumerate}
+        \item kNN induces an empirical conditional: \textcolor{red}{think about this more}\[\hat{p}_{\text{kNN}}(Q \mid H') = \sum_{j \in \mathcal{N}_k(H')} w_j (H') \delta (Q - Q_j)\qquad w_j \propto \exp(-||H_j - H'||^2 / \sigma^2)\]
+    \end{itemize}
+    \item \textit{Conditional VAE:} Introduce latent $z \in \mathbb{R}^d$: $z \sim \mathcal{N}(0, I), \,\, Q \sim p_\theta(Q \mid H, z)$
+    \begin{itemize}
+        \item Train an encoder $q_\phi(z \mid Q, H)$ and decoder $p_\theta(Q \mid H, z)$ via ELBO loss:
+        \[\log p_\theta (Q \mid H) \geq \mathbb{E}_{z \sim q_\phi(z \mid Q, H)} [\log p_\theta (Q \mid H, z)] - \mathrm{KL}[q_\theta(z \mid Q, H)\, || \,\mathcal{N}(0, I)]\]
+        \item Potential decoder choice: output $\mu_\theta(H, z)$ and diagonal $\Sigma_\theta(H, z)$; use Gaussian likelihood: \[\log p_\theta (Q \mid H, z) = \log \mathcal{N}(Q; \mu_\theta (H, z), \Sigma_\theta (H, z))\]
+    \end{itemize}
+    \textcolor{red}{Read into theory behind this way more}
+    \item \textit{Invertible NN} (FrEIA): \textcolor{red}{Read into theory behind this way more}
+    \begin{itemize}
+        \item Invertibility requires equal dimensions $\rightarrow$ in the toy problem, $\mathrm{dim}(Q) = 3 \neq \mathrm{dim}(H) = 2$, so add a latent $z \in \mathbb{R}^1$ s.t. $(H, z) \in \mathbb{R}^3$
+        \item Learn an invertible map: $F_\theta : Q \leftrightarrow (\hat{H}, z)$ where $z$ is encouraged to be $\mathcal{N}(0, 1)$ and $\hat{H}$ matches $H$
+        \item $\uparrow$ Training objectives:
+        \begin{itemize}
+            \item Forward consistency: $\hat{H} \approx H \rightarrow \mathcal{L}_H = ||\hat{H}- H||^2$ 
+            \item Latent regularization: make $z \sim \mathcal{N}(0, 1)$
+        \end{itemize}
+        \item At test time, the inverse we want is: 
+        \[Q = F_\theta^{-1} (H, z), \quad z \sim \mathcal{N}(0, 1)\]
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Evaluation} 
+Assuming that the ground-truth $p^*(Q \mid H)$ is a uniform distribution over the feasible circle set, i.e.: $\theta \sim \text{Unif}[0, 2\pi) \rightarrow x = h_x - L\cos\theta, \, y = h_y - L\sin\theta$:
+\begin{itemize}
+    \item Accuracy: $e_{\text{hand}} (Q, H) \coloneq ||f(Q) - H||$
+    \item Diversity/coverage: convert each sample to its implied angle on the circle: \[\theta^{(s)}_{\text{implied}} \coloneq \mathrm{atan2}\left(h_y - y^{(s)}, h_x - x^{(s)}\right)\]
+    Check how well the empirical distribution over $\theta$ matches the target (here we assume $\theta \sim \text{Unif}[0, 2\pi)$): for histogram $\hat{p}(\theta)$, we can compute:
+    \begin{itemize}
+        \item KL divergence to uniform: $D_{\mathrm{KL}} (\hat{p}(\theta) \, ||\, \text{Unif})$
+        \item Max angle gap: sort angles $\theta^{(s)}$ around the circle, compute max gap $\Delta_{\mathrm{max}} = \max_i (\theta_{i+1} - \theta_i)$
+        
+        Large $\Delta_{\text{max}}$ = model is missing big arcs (collapse)
+    \end{itemize}
+    \item ``Uses latent'' test (for cVAE/cINN): fix $H$, sample many $z$'s, then measure output variance $\mathrm{Var}(Q \mid H)$. If the model ignores $z$, this variance will be small.
+    \item Generalization in $H$: make a test set where $H$ is (1) in-distribution, (2) near boundary, (3) out-of-distribution (slightly outside training workspace). Compare success and coverage!
+    \item Inference speed per sample
+\end{itemize}
+
+\subsection{Extending to more general cases} Ideally, would be nice if this toy problem gave us an idea of the advantages/disadvantages of different approaches in regards to the following challenges:
+\begin{itemize}
+    \item \textit{Mode collapse:} Test: fixed $H$, sample 1k solultions, compute $\Delta_{\mathrm{max}}$, KL-to-uniform, etc.
+    \item \textit{Generalization:} Test: distribution of $e_{\text{hand}} = || f(Q) - H||$
+    \item \textit{Bias from data collection} (forward vs. inverse sampling): 
+\end{itemize}
+
+\subsection{Potential next-step extensions}
+\begin{itemize}
+    \item Disconnected feasible sets: modify toy with a ``visibility'' constraint such as \[\text{visible}(Q, H) = 1 \iff \theta \in [\alpha_1, \beta_1] \cup [\alpha_2, \beta_2]\]
+    Now the true $p^*(Q \mid H)$ is two separated modes. \textbf{Test:} cluster sampled angles into arcs and compute mode recall: fraction of samples that land in each arc. 
+    \item Scalability with dimension: add DoF to the toy (e.g., 2-link arm, variable stick length). \textbf{Test:} track how coverage/error degrades with dimension.
+\end{itemize}
+
+\section{Extra notes}
+
+\subsection{Mode collapse}
+
+A generative model has mode collapse if, for a fixed condition $H$, the samples $Q \sim \hat{p}(Q \mid H)$ cover only a small subset of the true support of $p^* (Q \mid H)$. 
+\begin{itemize}
+    \item In this toy problem, the support is the full circle parameterized by $\theta$. Mode collapse looks like the model always outputting $\theta \approx 0$ (i.e. stands in one favorite location) or outputting only a few discrete angles, ignoring the rest the circle, etc.
+\end{itemize}
+
+\subsection{cVAE theory}
+
+\subsubsection{ELBO loss}
+
+\subsection{FrEIA INN theory}
+
+They claim that their invertible neural net is essentially normalized flow -- here is the math behind this!
+
+\subsection{Normalized flow}
+
+\pagebreak
+\bibliographystyle{plain} % or another style you prefer
+\bibliography{reachability_references}       % Note: No need to include the .bib extension
+
+\end{document}
