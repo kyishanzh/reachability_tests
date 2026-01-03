@@ -154,7 +154,7 @@ Rearranging shows that as $\theta$ varies, the base center $(x,y)$ traces out a 
             \item Find indices of the $k$ nearest $H_i$ to $H'$ (under $||H_i - H'||$)
             \item Return their associated $Q_i$'s (either all or sample one etc.)
         \end{enumerate}
-        \item kNN induces an empirical conditional: \textcolor{red}{think about this more}\[\hat{p}_{\text{kNN}}(Q \mid H') = \sum_{j \in \mathcal{N}_k(H')} w_j (H') \delta (Q - Q_j)\qquad w_j \propto \exp(-||H_j - H'||^2 / \sigma^2)\]
+        \item For a new $H'$, we can return the $Q_i$ associated to the nearest $H_i$, or sample from an empirical conditional distribution created based on the nearest neighbor graph:  $\hat{p}_{\text{kNN}}(Q \mid H') = \sum_{j \in \mathcal{N}_k(H')} w_j (H') \delta (Q - Q_j)$ (where weight $w_j$ is proportional to the distance between $H'$ and $H_i$, i.e. $w_j \propto \exp(-||H_j - H'||^2 / \sigma^2)$).
     \end{itemize}
     \item \textit{Conditional VAE:} Introduce latent $z \in \mathbb{R}^d$: $z \sim \mathcal{N}(0, I), \,\, Q \sim p_\theta(Q \mid H, z)$
     \begin{itemize}
@@ -162,8 +162,16 @@ Rearranging shows that as $\theta$ varies, the base center $(x,y)$ traces out a 
         \[\log p_\theta (Q \mid H) \geq \mathbb{E}_{z \sim q_\phi(z \mid Q, H)} [\log p_\theta (Q \mid H, z)] - \mathrm{KL}[q_\theta(z \mid Q, H)\, || \,\mathcal{N}(0, I)]\]
         \item Potential decoder choice: output $\mu_\theta(H, z)$ and diagonal $\Sigma_\theta(H, z)$; use Gaussian likelihood: \[\log p_\theta (Q \mid H, z) = \log \mathcal{N}(Q; \mu_\theta (H, z), \Sigma_\theta (H, z))\]
     \end{itemize}
-    \textcolor{red}{Read into theory behind this way more}
-    \item \textit{Invertible NN} (FrEIA): \textcolor{red}{Read into theory behind this way more}
+    \textcolor{red}{[TODO: Read into math more]}, notes in \ref{cvae}
+    \begin{itemize}
+        \item Advantages of cVAE for this problem:
+        \begin{itemize}
+            \item Multi-modality via latent variable $z$ (different $z$'s can map to different valid configurations on the circle) $\rightarrow$ addresses mode collapse relative to deterministic nets \textcolor{blue}{[assuming we avoid posterior collapse (decoder ignores $z$)]}
+            \item Smooth generalization in $H$: theoretically, the encoder/decoder can learn continuous maps in $H$-space, allowing better interpolation than the nearest neighbors approach.
+        \end{itemize}
+        \item Note: $\theta$ is periodic, so training a Gaussian likelihood $p_\theta(Q \mid H, z)$ (in the decoder) on raw $\theta \in [0, 2\pi)$ is awkward because $\theta \approx 0$ and $\theta \approx 2\pi$ are close physically but far numerically ($\hat{\theta} = 2\pi - 0.01$ is a pretty good prediction for ground truth $\theta = 0.01$). To avoid this, instead of modeling $\theta \sim \mathcal{N}(\mu, \sigma^2)$, we can model a Gaussian over Cartesian coordinates in $\mathbb{R}^2$: \[(\cos \theta , \sin \theta) \sim \mathcal{N}(\mu_{cs}, \text{diag}(\sigma^2_{cs}))\]We can recover $\theta$ via $\mathrm{atan2}$ at inference time.
+    \end{itemize}
+    \item \textit{Invertible NN} (FrEIA): \textcolor{red}{[TODO: Read into math more]}, notes in \ref{inn}
     \begin{itemize}
         \item Invertibility requires equal dimensions $\rightarrow$ in the toy problem, $\mathrm{dim}(Q) = 3 \neq \mathrm{dim}(H) = 2$, so add a latent $z \in \mathbb{R}^1$ s.t. $(H, z) \in \mathbb{R}^3$
         \item Learn an invertible map: $F_\theta : Q \leftrightarrow (\hat{H}, z)$ where $z$ is encouraged to be $\mathcal{N}(0, 1)$ and $\hat{H}$ matches $H$
@@ -217,11 +225,33 @@ A generative model has mode collapse if, for a fixed condition $H$, the samples 
     \item In this toy problem, the support is the full circle parameterized by $\theta$. Mode collapse looks like the model always outputting $\theta \approx 0$ (i.e. stands in one favorite location) or outputting only a few discrete angles, ignoring the rest the circle, etc.
 \end{itemize}
 
-\subsection{cVAE theory}
+\subsection{Conditional VAE theory} \label{cvae} The goal is to model a multi-modal conditional distribution over robot configurations $Q$ given target $H$: $p^*(Q \mid H)$. In our simple robot setup, the true conditional has a 1D manifold of solutions (a circle in $(x,y)$ paired with corresponding $\theta$), so it's not unimodal in the usual sense (rather than being a single blob in $\mathbb{R}^d$, for fixed $H$, probability mass $p^*(Q \mid H)$ is concentrated along a ring in $(x,y)$ with a corresponding orientation $\theta$ at each point). 
+
+\subsubsection{Motivation} Because $p^*(Q \mid H)$ is not unimodal, if we model $p(Q \mid H)$ as a single Gaussian/predict a single mean, we face mean collapse: the mean of points around a circle is the center of the circle, but the center is invalid. So the ``best'' unimodal prediction is often physically invalid/low-probability under the true distribution.
+
+\subsubsection{Model architecture} We introduce latent $z \in \mathbb{R}^{d_z}$, which ideally will be the variable that ``chooses'' \textit{which} solution the model means among the many possible solutions on the ring for a given $H$. Define a prior $p(z) = \mathcal{N}(0, I)$. There are two parts to the model (decoder and encoder):
+\begin{itemize}
+    \item \underline{Decoder (generative model):} The decoder is a conditional distribution $p_\theta(Q \mid H, z)$. For the architecture of the decoder, we use the diagonal Gaussian \textcolor{blue}{(try other architectures next)}: \[p_\theta(Q \mid H, z) = \mathcal{N}(Q; \mu_\theta(H, z), \text{diag}(\sigma^2_\theta (H, z)))\] where $\mu_\theta(H,z)$ and $\sigma^2_\theta$ are the predicted mean/variance of each coordinate of $Q$. 
+    \item \emph{Interlude:} $p_\theta(Q, z \mid H) = p(z \mid H) p(Q \mid z, H) = p(z) p_\theta(Q \mid H, z)$ [assuming $p(z\mid H) = p(z)$]. Bayes' rule gives:
+    \[p_\theta(z\mid Q, H) = \frac{p_\theta(Q, z \mid H)}{p_\theta(Q \mid H)} = \frac{p(z) p_\theta (Q \mid H, z)}{p_\theta(Q \mid H)}\]
+    Expanding the denominator: $p_\theta(Q \mid H) = \int p(z') p_\theta (Q \mid H, z') \, dz'$ (consider all possible latent explanations $z'$, weight how likely each would produce $Q$, then sum them up). Plugging this in,
+    \[p_\theta(z\mid Q, H) =\frac{p(z) p_\theta(Q \mid H, z)}{\int p(z') p_\theta(Q \mid H, z') \, dz'}\]
+    The denominator $\int p(z') p_\theta(Q \mid H, z') \, dz'$ is intractable: $p_\theta(Q \mid H, z') = \mathcal{N}(Q; \mu_\theta(H, z'), \Sigma_\theta(H, z'))$, so we effectively have
+    \[p(z') p_\theta(Q \mid H, z') \Rightarrow \mathcal{N}(z'; 0, 1) \times \mathcal{N}(Q; \mu_\theta(H, z'), \Sigma_\theta(H, z'))\]
+    For fixed $Q$ and $H$, $\mathcal{N}(Q; \mu_\theta(H, z'), \Sigma_\theta(H, z'))$ becomes some complicated nonnegative function of $z'$ $\rightarrow g(z')$. Then, 
+    \[p_\theta(Q \mid H) = \int \mathcal{N}(z'; 0, I) g(z')\, dz'\]
+    This is very hard to compute analytically: recall the multivariate Gaussian density is given by:
+    \[f_{\mu, \Sigma}(Q) = \frac{1}{(2\pi)^{d/2} |\Sigma|^{1/2}} \exp\left(- \tfrac12 (Q-\mu)^\top \Sigma^{-1} (Q-\mu)\right)\]
+    Here, we plug in $\mu = \mu_\theta (H, z'), \Sigma = \Sigma_\theta (H, z')$. These are neural-net outputs, i.e. complicated nonlinear functions of $z'$, which makes the integral difficult to compute. 
+
+    Since the true posterior is intractable, introduce a tractable approximation $q_\phi(z \mid Q, H) : (Q, H) \mapsto p(z)$ which essentially answers ``If this $Q$ came from some latent $z$, what must that $z$ have been?''
+
+    \item \underline{Encoder (inference model):}  The encoder is the conditional distribution $q_\phi(z \mid Q, H)$. 
+\end{itemize}
 
 \subsubsection{ELBO loss}
 
-\subsection{FrEIA INN theory}
+\subsection{FrEIA INN theory} \label{inn}
 
 They claim that their invertible neural net is essentially normalized flow -- here is the math behind this!
 

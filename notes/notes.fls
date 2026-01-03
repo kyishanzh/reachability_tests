@@ -1,8 +1,8 @@
-PWD /Users/niu/projects/research/notes
+PWD /Users/niu/projects/reachability_tests/notes
 INPUT /usr/local/texlive/2023/texmf.cnf
 INPUT /usr/local/texlive/2023/texmf-dist/web2c/texmf.cnf
 INPUT /usr/local/texlive/2023/texmf-var/web2c/pdftex/pdflatex.fmt
-INPUT /Users/niu/projects/research/notes/notes.tex
+INPUT /Users/niu/projects/reachability_tests/notes/notes.tex
 OUTPUT notes.log
 INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/amscls/amsart.cls
 INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/amscls/amsart.cls
