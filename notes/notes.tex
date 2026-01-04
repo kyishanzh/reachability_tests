@@ -182,6 +182,8 @@ Rearranging shows that as $\theta$ varies, the base center $(x,y)$ traces out a 
         \end{itemize}
         \item At test time, the inverse we want is: 
         \[Q = F_\theta^{-1} (H, z), \quad z \sim \mathcal{N}(0, 1)\]
+    \item Added FK constraint (optional loss regularization term): \[\mathcal{L} = \mathcal{L}_{\text{NLL}} + \boxed{\lambda_{\text{FK}} \mathbb{E}_{z \sim \mathcal{N}} [\text{FK\_error}(f^{-1} (z; H), H)]}\]
+        The hope is that when we penalize FK on generated samples $x$ conditioned on $H$, we directly tell the model that ``when you sample from $p_\theta(q \mid H)$, those samples should actually reach $H$.''
     \end{itemize}
 \end{enumerate}
 
@@ -231,7 +233,7 @@ A generative model has mode collapse if, for a fixed condition $H$, the samples 
 
 \subsubsection{Model architecture} We introduce latent $z \in \mathbb{R}^{d_z}$, which ideally will be the variable that ``chooses'' \textit{which} solution the model means among the many possible solutions on the ring for a given $H$. Define a prior $p(z) = \mathcal{N}(0, I)$. There are two parts to the model (decoder and encoder):
 \begin{itemize}
-    \item \underline{Decoder (generative model):} The decoder is a conditional distribution $p_\theta(Q \mid H, z)$. For the architecture of the decoder, we use the diagonal Gaussian \textcolor{blue}{(try other architectures next)}: \[p_\theta(Q \mid H, z) = \mathcal{N}(Q; \mu_\theta(H, z), \text{diag}(\sigma^2_\theta (H, z)))\] where $\mu_\theta(H,z)$ and $\sigma^2_\theta$ are the predicted mean/variance of each coordinate of $Q$. 
+    \item \underline{Decoder (generative model):} The decoder is a conditional distribution $p_\theta(Q \mid H, z)$. For the architecture of the decoder, we use the diagonal Gaussian \textcolor{blue}{(potential next step -- try other architectures)}: \[p_\theta(Q \mid H, z) = \mathcal{N}(Q; \mu_\theta(H, z), \text{diag}(\sigma^2_\theta (H, z)))\] where $\mu_\theta(H,z)$ and $\sigma^2_\theta$ are the predicted mean/variance of each coordinate of $Q$. 
     \item \emph{Interlude:} $p_\theta(Q, z \mid H) = p(z \mid H) p(Q \mid z, H) = p(z) p_\theta(Q \mid H, z)$ [assuming $p(z\mid H) = p(z)$]. Bayes' rule gives:
     \[p_\theta(z\mid Q, H) = \frac{p_\theta(Q, z \mid H)}{p_\theta(Q \mid H)} = \frac{p(z) p_\theta (Q \mid H, z)}{p_\theta(Q \mid H)}\]
     Expanding the denominator: $p_\theta(Q \mid H) = \int p(z') p_\theta (Q \mid H, z') \, dz'$ (consider all possible latent explanations $z'$, weight how likely each would produce $Q$, then sum them up). Plugging this in,
@@ -249,13 +251,59 @@ A generative model has mode collapse if, for a fixed condition $H$, the samples 
     \item \underline{Encoder (inference model):}  The encoder is the conditional distribution $q_\phi(z \mid Q, H)$. 
 \end{itemize}
 
-\subsubsection{ELBO loss}
+% \subsubsection{ELBO loss}
 
-\subsection{FrEIA INN theory} \label{inn}
+\subsection{FrEIA INN theory} \label{inn} The goal is to learn $p(Q \mid H)$, where $Q = (x, y, \cos \theta, \sin \theta) \in \mathbb{R}^4$ (equivalent form of $(x, y, \theta)$) and $H = (h_x, h_y) \in \mathbb{R}^2$. A normalizing flow models an invertible map (for each fixed condition $h$): 
+\[f_\theta(\cdot; h) : \mathbb{R}^4 \rightarrow \mathbb{R}^4, \quad z = f_\theta (q; h), \quad q = f_\theta^{-1}(z; h)\]
+We pick the base density for $z$ to be the multivariate standard normal: \[p_Z(z) = \mathcal{N}(0, I_4)\]
+Then, $p_\theta(q \mid h)$ can be defined via ``push $q$ through $f$ to get $z$, and measure how likely that $z$ is, corrected by volume change'' $\rightarrow$ correction is the Jacobian determinant. 
 
-They claim that their invertible neural net is essentially normalized flow -- here is the math behind this!
+\subsubsection{Hand-wavy intuition} For each condition $h$, the true data $q$ lives in some weird, potentially multi-modal shape (ring of solutions in our simplified problem). A Gaussian cannot represent that shape directly.
+\begin{itemize}
+    \item \textit{Core idea:} Instead of trying to fit a complicated distribution directly, we learn a warp of space that makes the complicated shape look Gaussian.
+    \begin{itemize}
+        \item Forward direction: $z = f_\theta(q; h)$ takes real samples $q$ and maps them into ``Gaussian space''
+        \item Training enforces: ``after mapping, these $z$'s should look like samples from $\mathcal{N}(0, I)$''
+        \item Warping space changes volume $\rightarrow$ probability densities change:
+        \begin{itemize}
+            \item If $f$ expands a region of $q$-space, then points there become less dense in $q$-space. 
+            \item If $f$ compresses a region, points become more dense.
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+After learning an invertible NN model, we can generate realistic $q$ by:
+\begin{enumerate}
+    \item Sample $z \sim \mathcal{N}(0, I)$
+    \item Invert: $q = f_\theta^{-1}(z; h)$
+\end{enumerate}
 
-\subsection{Normalized flow}
+\textit{Fun way of thinking about it:} Imagine data for $q$'s is shaped like a bent pretzel in $\mathbb{R}^D$. A flow learns a continuous, invertible deformation of space that morphs the pretzel into a $D$-dim. Gaussian blob. Forward pass = ``unbend the pretzel into a Gaussian.'' Inverse pass = ``bend a Gaussian blob back into a pretzel.'' The Jacobian term is bookkeeping of how the deformation stretches space.
+
+\subsubsection{Why layers need to be invertible}
+\begin{enumerate}
+    \item Invertible layers allow flow models to compute an exact probability for any observed training point: if $Q$ is a real solution from the dataset for some $H$, we can compute exactly how likely the model thinks it is (flows are the only model out of GANs, VAEs, and diffusion models that can compute the exact log-likelihood of a new sample)
+    \[\Pr(\mathbf{f} (\mathbf{Q})\mid \mathbf{H}, \mathbf{\phi}) = \bigg|\frac{\partial \mathbf{f} (\mathbf{z}, \mathbf{H}, \phi)}{\partial \mathbf{z}}\bigg|^{-1} \cdot \Pr(\mathbf{z}) \text{ where } \mathbf{z} = \mathbf{f}^{-1} (\mathbf{x}, \mathbf{H}, \phi) \text{ and } \phi = \text{learned model params}\]
+    \item Invertibility allows sampling to be one inverse pass rather than iterative denoising, sampling chains, etc.: once trained, we can directly (1) sample $z \sim \mathcal{N}(0, I)$ (2) compute $Q = f_{\theta}^{-1} (z; H)$
+\end{enumerate}
+
+\subsubsection{More concrete math} In separate PDF (\texttt{flow model FrEIA implementation notes.pdf}).
+
+
+\subsection{Normalizing flow} In separate PDF (\texttt{normalizing flow notes.pdf}).
+
+
+\subsection{Conceptual comparison of different methods}
+
+\subsubsection{Flow}
+
+\subsubsection{cVAE}
+
+\subsubsection{Diffusion}
+
+\subsection{Invertible neural networks vs. normalizing flow}
+
+% All normalizing flow networks are invertible neural networks! Here is the math behind why:
+
 
 \pagebreak
 \bibliographystyle{plain} % or another style you prefer

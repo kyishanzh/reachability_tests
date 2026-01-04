@@ -193,6 +193,17 @@ wheels = [
 ]
 
 [[package]]
+name = "freia"
+version = "0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "scipy" },
+    { name = "torch" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d4/76/5660f714a3a8c8df9c3301161b53fbdaa7a911ee0f660eaa65fa5a5b36f9/FrEIA-0.2.tar.gz", hash = "sha256:e9f1732b4a238b85b0ad3bc14b279a653a6063d14152028e164b989582026bdc", size = 34270, upload-time = "2022-07-04T08:51:18.645Z" }
+
+[[package]]
 name = "fsspec"
 version = "2025.12.0"
 source = { registry = "https://pypi.org/simple" }
@@ -885,6 +896,7 @@ name = "reachability-tests"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "freia" },
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "pandas" },
@@ -896,6 +908,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "freia", specifier = ">=0.2" },
     { name = "matplotlib", specifier = ">=3.10.8" },
     { name = "numpy", specifier = ">=2.4.0" },
     { name = "pandas", specifier = ">=2.3.3" },

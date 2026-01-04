@@ -12,22 +12,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from reachability.models.base import ConditionalGenerativeModel
-
-def q_to_qfeat(Q: np.ndarray) -> np.ndarray:
-    """Q: [N, 3] = (x, y, theta) -> Q_feat: [N, 4] = (x, y, cos theta, sin theta)"""
-    return np.concatenate([Q[:, 0:1],
-                           Q[:, 1:2],
-                           np.cos(Q[:, 2:3]),
-                           np.sin(Q[:, 2:3])],
-                           axis=1).astype(np.float32)
-
-def qfeat_to_q(Q_feat: np.ndarray) -> np.ndarray:
-    """Q_feat: [N, 4] = (x, y, cos theta, sin theta) -> Q: [N, 3] = (x, y, theta)"""
-    theta = np.arctan2(Q_feat[:, 3:4], Q_feat[:, 2:3]) # sin, cos
-    theta = np.mod(theta, 2.0 * np.pi)
-    return np.concatenate([Q_feat[:, 0:1],
-                           Q_feat[:, 1:2],
-                           theta], axis=1).astype(np.float32)
+from reachability.models.loss import fk_mse_from_qfeat
+from reachability.utils.utils import q_to_qfeat_np as q_to_qfeat, qfeat_to_q_np as qfeat_to_q
 
 class MLP(nn.Module):
     def __init__(self, in_dim: int, hidden: Sequence[int], out_dim: int):
@@ -113,27 +99,6 @@ def gaussian_nll(x: torch.Tensor, mu: torch.Tensor, logvar: torch.Tensor) -> tor
 def kl_standard_normal(mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
     """D_KL[N(mu, diag(var)) || N(0, I)] per example: shape [B]"""
     return 0.5 * torch.sum(mu ** 2 + torch.exp(logvar) - 1.0 - logvar, dim=-1)
-
-def fk_mse_from_qfeat(mu_q: torch.Tensor, H: torch.Tensor, L: float, eps: float=1e-8) -> torch.Tensor:
-    """
-    mu_q: [B, 4] = (x, y, cos, sin)  (decoder mean)
-    H: [B, 2] = (hx, hy)
-    returns: [B] per-example squared FK error ||hand - H||^2
-    """
-    x = mu_q[:, 0]
-    y = mu_q[:, 1]
-    c = mu_q[:, 2]
-    s = mu_q[:, 3]
-
-    # normalize c, s onto the unit circle
-    r = torch.sqrt(c * c + s * s + eps)
-    c = c/r
-    s = s/r
-
-    hx_pred = x + L * c
-    hy_pred = y + L * s
-
-    return (hx_pred - H[:, 0]) ** 2 + (hy_pred - H[:, 1]) ** 2
 
 @dataclass
 class CVAEConditionalSampler(ConditionalGenerativeModel):
