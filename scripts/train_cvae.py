@@ -1,9 +1,11 @@
 # running from root (reachability_tests/): python -m scripts.train_cvae --config configs/simple_cvae.yaml --wandb
+# to save trained model, add tags --save --save_path "outputs/model_ckpts/cvae/cvae_132026.pt" (etc.)
 from __future__ import annotations
 
 import argparse
 import yaml
 import wandb
+from pathlib import Path
 
 from reachability.utils.utils import set_seed, print_results
 from reachability.envs.simple import SimpleEnv, Workspace2D
@@ -15,6 +17,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", type=str, default="../configs/simple_cvae.yaml")
     ap.add_argument("--wandb", default=False, action="store_true")
+    ap.add_argument("--save", default=False, action="store_true")
+    ap.add_argument("--save_path", default="../outputs/model_ckpts")
     args = ap.parse_args()
 
     with open(args.config, "r") as f:
@@ -59,9 +63,20 @@ def main():
         beta=float(mcfg["beta"]),
         device=str(mcfg.get("device", "cpu")),
         seed=int(cfg["seed"]),
+        L=float(env.L),
+        lambda_fk=float(mcfg.get("lambda_fk", 0.0)),
         wandb_run=run
     )
     model.fit(H_train=H_train, Q_train=Q_train)
+
+    # save model
+    if args.save:
+        model.save(args.save_path)
+        save_path = Path(args.save_path)
+        config_path = save_path.with_suffix(".yaml")
+        with open(config_path, 'w') as file:
+            yaml.dump(cfg, file)
+        print(f"Saved model to {args.save_path}, corresponding config to {config_path}")
 
     # eval config
     ecfg = cfg["eval"]

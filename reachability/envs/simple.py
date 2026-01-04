@@ -91,6 +91,7 @@ class SimpleEnv:
         ax.scatter([hx_fk], [hy_fk], marker="x")  # hand (FK)
 
         # target H
+        print(one_H, "**")
         hx, hy = float(one_H[0]), float(one_H[1])
         ax.scatter([hx], [hy], marker="*")  # target
         ax.plot([hx_fk, hx], [hy_fk, hy], linestyle=":")  # line from hand to target (visual error)
