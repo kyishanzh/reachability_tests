@@ -45,4 +45,5 @@ def evaluate_model(env, model, H_test: np.ndarray, cfg: EvalConfig, rng: np.rand
         "coverage/max_gap_p95": max_gap_p95,
         "coverage/kl_to_uniform": kl,
         "stochasticity/var_Q_fixed_H": var,
+        "eval/theta_values": th_all.astype(np.float64)
     }

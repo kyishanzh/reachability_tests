@@ -1,4 +1,2 @@
 __pycache__
-notes/notes.*
-!notes/*.pdf
-!notes/*.tex
+wandb
