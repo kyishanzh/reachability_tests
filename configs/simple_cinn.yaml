@@ -14,14 +14,14 @@ data:
   n_test: 2000
 
 model:
-  n_blocks: 8
+  n_blocks: 16
   hidden: 128
   clamp: 2.0
   lr: 0.001
   batch_size: 256
-  epochs: 60
+  epochs: 200
   device: cpu
-  lambda_fk: 0.1
+  lambda_fk: 0
 
 eval:
   n_samples_per_H: 200

@@ -173,18 +173,37 @@ Rearranging shows that as $\theta$ varies, the base center $(x,y)$ traces out a 
     \end{itemize}
     \item \textit{Invertible NN} (FrEIA): \textcolor{red}{[TODO: Read into math more]}, notes in \ref{inn}
     \begin{itemize}
-        \item Invertibility requires equal dimensions $\rightarrow$ in the toy problem, $\mathrm{dim}(Q) = 3 \neq \mathrm{dim}(H) = 2$, so add a latent $z \in \mathbb{R}^1$ s.t. $(H, z) \in \mathbb{R}^3$
-        \item Learn an invertible map: $F_\theta : Q \leftrightarrow (\hat{H}, z)$ where $z$ is encouraged to be $\mathcal{N}(0, 1)$ and $\hat{H}$ matches $H$
-        \item $\uparrow$ Training objectives:
-        \begin{itemize}
-            \item Forward consistency: $\hat{H} \approx H \rightarrow \mathcal{L}_H = ||\hat{H}- H||^2$ 
-            \item Latent regularization: make $z \sim \mathcal{N}(0, 1)$
-        \end{itemize}
-        \item At test time, the inverse we want is: 
-        \[Q = F_\theta^{-1} (H, z), \quad z \sim \mathcal{N}(0, 1)\]
-    \item Added FK constraint (optional loss regularization term): \[\mathcal{L} = \mathcal{L}_{\text{NLL}} + \boxed{\lambda_{\text{FK}} \mathbb{E}_{z \sim \mathcal{N}} [\text{FK\_error}(f^{-1} (z; H), H)]}\]
-        The hope is that when we penalize FK on generated samples $x$ conditioned on $H$, we directly tell the model that ``when you sample from $p_\theta(q \mid H)$, those samples should actually reach $H$.''
+        \item \textbf{Representation:} To avoid periodicity issues in $\theta$, we model: \[Q_{\text{feat}} = (x, y, \cos \theta) \in \mathbb{R}^4, \quad H = (h_x, h_y) \in \mathbb{R}^2\]
+        \item \textbf{Conditional invertible map:} We learn an invertible mapping (for each condition $H$)
+        \[f_\theta(\cdot; H): \mathbb{R}^4 \leftrightarrow \mathbb{R}^4, \quad z = f_\theta (Q; H), \quad Q = f_\theta^{-1} (z; H)\]
+        with a simple base distribution $z \sim \mathcal{N}(0, I_4)$. In code this is implemented as a stack of conditional affine coupling blocks (FrEIA \texttt{SequenceINN} + \texttt{AllInOneBlock}) where each block receives $H$ as a conditioning input.
+        \item \textbf{Training:} Using the change-of-variables formula, the conditional density is: 
+        \[p_\theta(Q \mid H) = p_Z (f_\theta(Q; H)) \bigg|\det\frac{\partial f_\theta(Q; H)}{\partial Q}\bigg|\]
+        Therefore:
+        \[\log p_\theta(Q \mid H) = \log p_Z (z) + \log |\det J_{f_\theta}(x; H) |\]
+        With $p_Z = \mathcal{N}(0, I)$, the per-example negative log-likelihood (dropping constants) is:
+        \[\mathcal{L}_{\text{NLL}}(Q, H) = \frac{1}{2} ||z||^2 - \log |\det J_{f_\theta}(Q; H)|\]
+        We minimize $\mathbb{E}_{(Q, H) \sim \text{data}} |\mathcal{L}_{\text{NLL}} (Q, H)|$.
+
+        \item \textbf{Sampling:} At test time, for a given $H$ we sample:
+        \[z \sim \mathcal{N}(0, I_4), \qquad Q = f_\theta^{-1}(z, H)\]
+        then convert $Q = (x, y, \cos \theta, \sin \theta)$ back to $(x, y, \theta)$ with $\theta = \text{atan2} (\sin \theta, \cos \theta)$. 
+
+        \item \textbf{Optional FK regularization (sample-space constraint):} Since the true conditional support lies on the IK manifold (all physically valid configurations for a given target must satisfy the IK constraint), we can add a penalty that directly enforces that generated samples reach $H$:
+    \[
+    \mathcal{L}
+    =
+    \mathbb{E}_{(Q,H)\sim\mathcal{D}}\big[\mathcal{L}_{\text{NLL}}(Q,H)\big]
+    \;+\;
+    \lambda_{\text{FK}}\,
+    \mathbb{E}_{H\sim\mathcal{D},\, z\sim\mathcal{N}(0,I)}
+    \Big[
+      \|f_{\text{FK}}(f_\theta^{-1}(z;H)) - H\|^2
+    \Big].
+    \]
+    In our implementation we compute FK error on inverse samples $\hat{Q} = f_\theta^{-1}(z;H)$ during training (rather than on the training $Q$ itself, as $\text{FK}(Q) = H$ by virtue of being in the dataset), so the regularizer shapes the \emph{sampled} conditional distribution.
     \end{itemize}
+
 \end{enumerate}
 
 \subsection{Evaluation} 
@@ -199,7 +218,8 @@ Assuming that the ground-truth $p^*(Q \mid H)$ is a uniform distribution over th
         
         Large $\Delta_{\text{max}}$ = model is missing big arcs (collapse)
     \end{itemize}
-    \item ``Uses latent'' test (for cVAE/cINN): fix $H$, sample many $z$'s, then measure output variance $\mathrm{Var}(Q \mid H)$. If the model ignores $z$, this variance will be small.
+    \item ``Uses latent'' test (for cVAE/cINN): fix $H$, sample many $z$'s, then measure output variance $\mathrm{Var}(Q \mid H)$. If the model ignores $z$, this variance will be small.\\
+    \textcolor{blue}{[$\downarrow$ TODO: Implement]}
     \item Generalization in $H$: make a test set where $H$ is (1) in-distribution, (2) near boundary, (3) out-of-distribution (slightly outside training workspace). Compare success and coverage!
     \item Inference speed per sample
 \end{itemize}
@@ -294,13 +314,21 @@ After learning an invertible NN model, we can generate realistic $q$ by:
 
 \subsection{Conceptual comparison of different methods}
 
-\subsubsection{Flow}
+Given the data is shaped like a pretzel in $\mathbb{R}^D$ \ldots
 
-\subsubsection{cVAE}
+\subsubsection{Flow} Learn an invertible deformation conditioned on $H$ that straightens the pretzel into a Gaussian $\mathcal{N}(0, I_D)$. Sampling works by running the inverse deformation on $z \sim \mathcal{N}(0, I_D)$ and $H$ to obtain $Q^*$. 
 
-\subsubsection{Diffusion}
+\subsubsection{cVAE} Learn a conditional generator that uses Gaussian knobs to choose how to output the pretzel; training teaches the knobs to stay Gaussian while reconstructing data.
+
+\subsubsection{Diffusion} Instead of unbending the pretzel into a Gaussian in one shot, diffusion dissolves the pretzel into pure noise by gradually adding noise, then learns to sculpt noise back into the pretzel step-by-step.
 
 \subsection{Invertible neural networks vs. normalizing flow}
+
+Invertible neural networks are a class of deep networks that approximate bijective functions and are characterized by a forward mapping that can be inverted. All normalizing flow networks are invertible neural networks. 
+
+\subsubsection{INNs as generative models} Because INNs learn a transformation between the input data distribution and a simple prior distribution (typically a normal distribution), the inverse mapping automatically acts as a generator, converting the simple distribution into samples resembling the input data. 
+
+\subsubsection{INNs that are not normalizing flow models} Invertible neural networks that are not flow models exist \textcolor{purple}{(TODO: Read into this paper \cite{INN2019})}.
 
 % All normalizing flow networks are invertible neural networks! Here is the math behind why:
 

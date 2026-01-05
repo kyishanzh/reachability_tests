@@ -1,3 +1,8 @@
-\begin{thebibliography}{}
+\begin{thebibliography}{1}
+
+\bibitem{INN2019}
+Lynton Ardizzone, Jakob Kruse, Sebastian~J. Wirkert, Daniel Rahner, Eric~W. Pellegrini, Ralf~S. Klessen, Lena Maier{-}Hein, Carsten Rother, and Ullrich K{\"{o}}the.
+\newblock Analyzing inverse problems with invertible neural networks.
+\newblock {\em CoRR}, abs/1808.04730, 2018.
 
 \end{thebibliography}
