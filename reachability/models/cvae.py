@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Sequence
 from pathlib import Path
 
-import yaml
 import wandb
 import numpy as np
 import torch
@@ -270,4 +269,3 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
 
         sampler._model = model
         return sampler
-    

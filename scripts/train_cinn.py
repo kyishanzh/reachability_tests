@@ -1,3 +1,4 @@
+# run from root reachability_tests/: python -m scripts.train_cinn --config configs/simple_cinn.yaml --wandb
 from __future__ import annotations
 
 import argparse

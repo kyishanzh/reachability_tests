@@ -53,3 +53,7 @@ def qfeat_to_q_torch(Q_feat: torch.Tensor, eps: float=1e-8) -> torch.Tensor:
     th = torch.atan2(sin, cos)
     th = torch.remainder(th, 2.0 * np.pi)
     return torch.cat([x, y, th], dim=1)
+
+def wrap_to_2pi(theta: np.ndarray) -> np.ndarray:
+    """Wrap angles to [0, 2pi)"""
+    return np.mod(theta, 2.0 * np.pi)

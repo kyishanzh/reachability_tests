@@ -3,6 +3,8 @@ from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 
+from reachability.utils.utils import wrap_to_2pi
+
 @dataclass(frozen=True)
 class Workspace2D:
     hx_min: float
@@ -107,14 +109,9 @@ class SimpleEnv:
         return ax
 
     @staticmethod
-    def wrap_to_2pi(theta: np.ndarray) -> np.ndarray:
-        """Wrap angles to [0, 2pi)"""
-        return np.mod(theta, 2.0 * np.pi)
-
-    @staticmethod
     def implied_theta_from_QH(Q: np.ndarray, H: np.ndarray) -> np.ndarray:
         """theta_implied = atan2(hy - y, hx - x)"""
         hx, hy, x, y = H[:, 0], H[:, 1], Q[:, 0], Q[:, 1]
         th = np.arctan2(hy - y, hx - x) # [-pi, pi]
-        th = SimpleEnv.wrap_to_2pi(th)
+        th = wrap_to_2pi(th)
         return th.astype(np.float32)
