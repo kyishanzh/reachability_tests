@@ -8,3 +8,5 @@ q_\phi(z \mid x) &= \mathcal{N}(\mu_\phi(x), \text{diag}(\sigma_\phi^2 (x))) \\
 z &\sim q_\phi(z \mid x)
 \end{align*}
 $$
+# Mode collapse
+![[mode collapse figure.png]]

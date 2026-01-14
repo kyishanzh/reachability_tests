@@ -1,8 +1,12 @@
 seed: 0
 
 env:
-  type: "Simple"
-  L: 1.0
+  type: "RotaryLink"
+  link_lengths: [0.8, 1.0]
+  joint_limits: None
+  n_links: 2
+  base_pos_eps: 0.3
+  base_heading_stddev: 0.2617993878 # np.pi/12
   workspace:
     hx_min: -2.0
     hx_max:  2.0

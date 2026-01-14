@@ -8,7 +8,8 @@ from pathlib import Path
 
 from reachability.utils.utils import set_seed, print_results
 from reachability.envs.simple import SimpleEnv, Workspace2D
-from reachability.data.datasets import SimpleDataset
+from reachability.envs.rotary_link import RotaryLinkEnv
+from reachability.data.datasets import Dataset
 from reachability.models.cinn import CINNConditionalSampler
 from reachability.eval.eval_model import EvalConfig, evaluate_model
 
@@ -27,8 +28,7 @@ def main():
     run = None
     if args.wandb:
         run = wandb.init(
-            project="kyz-mit",
-            name=cfg.get("run_name", "simple_cinn"),
+            project=cfg.get("project_name", "simple_cinn"),
             config=cfg
         )
     
@@ -37,14 +37,29 @@ def main():
     # env
     env_cfg = cfg["env"]
     ws = Workspace2D(**env_cfg["workspace"])
-    env = SimpleEnv(L=float(env_cfg["L"]), workspace=ws)
+    if env_cfg['type'] == 'Simple':
+        env = SimpleEnv(L=float(env_cfg["L"]), workspace=ws)
+    elif env_cfg['type'] == 'RotaryLink':
+        joint_limits=env_cfg['joint_limits']
+        if joint_limits == "None":
+            joint_limits = None
+        env = RotaryLinkEnv(
+            ws,
+            link_lengths=env_cfg['link_lengths'],
+            joint_limits=joint_limits,
+            n_links=int(env_cfg['n_links']),
+            base_pos_eps=float(env_cfg['base_pos_eps']),
+            base_heading_stddev=float(env_cfg['base_heading_stddev'])
+        )
+    else:
+        raise ValueError(f"Invalid environment type: {env_cfg['type']}")
 
     # data
     n_train = int(cfg["data"]["n_train"])
     n_test = int(cfg["data"]["n_test"])
 
-    train_ds = SimpleDataset.generate(env=env, n=n_train, rng=rng)
-    test_ds = SimpleDataset.generate(env=env, n=n_test, rng=rng)
+    train_ds = Dataset.generate(env=env, n=n_train, rng=rng)
+    test_ds = Dataset.generate(env=env, n=n_test, rng=rng)
 
     H_train, Q_train = train_ds.H, train_ds.Q
     H_test = test_ds.H
@@ -54,6 +69,7 @@ def main():
 
     # model
     model = CINNConditionalSampler(
+        env=env,
         n_blocks=int(mcfg["n_blocks"]),
         hidden=int(mcfg["hidden"]),
         clamp=float(mcfg.get("clamp", 2.0)),
@@ -62,9 +78,10 @@ def main():
         epochs=int(mcfg["epochs"]),
         device=str(mcfg.get("device", "cpu")),
         seed=int(cfg["seed"]),
-        L=float(env.L),
         lambda_fk=float(mcfg.get("lambda_fk", 0.0)),
-        wandb_run=run
+        wandb_run=run,
+        dQ=Q_train.shape[1],
+        dH=H_train.shape[1]
     )
     model.fit(H_train=H_train, Q_train=Q_train)
 

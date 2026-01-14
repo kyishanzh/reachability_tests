@@ -18,7 +18,7 @@ def implied_angles(env, Q_samples: np.ndarray, H: np.ndarray) -> np.ndarray:
     B, S, _ = Q_samples.shape
     Q_flat = Q_samples.reshape(B * S, -1)
     H_rep = np.repeat(H, repeats=S, axis=0) # [B*S, 2]
-    th = env.implied_theta_from_QH(Q_flat, H_rep).reshape(B, S)
+    th = env.target_bearing_world(Q_flat, H_rep).reshape(B, S)
     return th.astype(np.float32)
 
 def kl_to_uniform(theta: np.ndarray, n_bins: int, eps: float = 1e-9) -> float:

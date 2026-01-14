@@ -3,11 +3,11 @@ from dataclasses import dataclass
 import numpy as np
 
 from reachability.types import Batch
-from reachability.data.datasets import SimpleDataset
+from reachability.data.datasets import Dataset
 
 @dataclass
-class SimpleDataLoader:
-    dataset: SimpleDataset
+class DataLoader:
+    dataset: Dataset
     batch_size: int
     shuffle: bool
     rng: np.random.Generator

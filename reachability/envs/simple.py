@@ -22,6 +22,7 @@ class SimpleEnv:
     """
     L: float
     workspace: Workspace2D
+    name: str = "Simple"
 
     @property
     def dH(self) -> int:
@@ -53,11 +54,11 @@ class SimpleEnv:
 
     def fk_hand(self, Q: np.ndarray) -> np.ndarray:
         """Returns hand position f(Q) given Q (Q shape = n samples x 3)"""
-        print("Q = ", Q)
+        # print("Q = ", Q)
         single = (Q.ndim == 1)
         if single:
             Q = Q.reshape(1, 3)
-            print("reshaped Q = ", Q)
+            # print("reshaped Q = ", Q)
         x = Q[:, 0:1]
         y = Q[:, 1:2]
         theta = Q[:, 2:3]
@@ -65,7 +66,7 @@ class SimpleEnv:
             [x + self.L * np.cos(theta), y + self.L * np.sin(theta)],
             axis=1
         ).astype(np.float32)
-        print("hand = ", hand)
+        # print("hand = ", hand)
         return hand
 
     def plot(self, one_Q: np.ndarray, one_H: np.ndarray, save=False, save_path=""):
@@ -109,8 +110,9 @@ class SimpleEnv:
         return ax
 
     @staticmethod
-    def implied_theta_from_QH(Q: np.ndarray, H: np.ndarray) -> np.ndarray:
-        """theta_implied = atan2(hy - y, hx - x)"""
+    def target_bearing_world(Q: np.ndarray, H: np.ndarray) -> np.ndarray:
+        """World-frame bearing angle from base position (x, y) to target H.
+        -> theta_implied = atan2(hy - y, hx - x)"""
         hx, hy, x, y = H[:, 0], H[:, 1], Q[:, 0], Q[:, 1]
         th = np.arctan2(hy - y, hx - x) # [-pi, pi]
         th = wrap_to_2pi(th)

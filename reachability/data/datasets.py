@@ -1,17 +1,18 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from typing import Any
 import numpy as np
-from reachability.envs.simple import SimpleEnv
+
 from reachability.types import Batch
 
 @dataclass(frozen=True)
-class SimpleDataset:
-    env: SimpleEnv
+class Dataset:
+    env: Any
     H: np.ndarray  # [N, 2]
     Q: np.ndarray  # [N, 3]
 
     @classmethod
-    def generate(cls, env: SimpleEnv, n: int, rng: np.random.Generator):
+    def generate(cls, env, n: int, rng: np.random.Generator):
         """H ~ p(H) then Q ~ p*(Q | H)"""
         H = env.sample_H(n, rng)
         Q = env.sample_Q_given_H_uniform(H, rng)

@@ -2,6 +2,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
+import joblib
+from pathlib import Path
+
 from reachability.models.base import ConditionalGenerativeModel
 
 @dataclass
@@ -36,6 +39,18 @@ class NNDeterministicLookup(ConditionalGenerativeModel):
         # repeat deterministically along the sample axis to match [B, n_samples, dQ]
         out = np.repeat(Q_nn[:, None, :], repeats=n_samples, axis=1).astype(np.float32)
         return out
+
+    def save(self, path: str):
+        """Saves the model state to a file."""
+        joblib.dump(self, path)
+        print(f"Model saved to {path}")
+    
+    @classmethod
+    def load(path: str) -> NNDeterministicLookup:
+        """Reloads the model state from a file."""
+        model = joblib.load(path)
+        print(f"Model loaded from {path}")
+        return model
 
 @dataclass
 class KNNConditionalSampler(ConditionalGenerativeModel):

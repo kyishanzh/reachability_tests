@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Any
 
 import wandb
 import numpy as np
@@ -13,8 +13,8 @@ import FrEIA.framework as Ff
 import FrEIA.modules as Fm
 
 from reachability.models.base import ConditionalGenerativeModel
-from reachability.models.loss import fk_mse_from_qfeat
-from reachability.utils.utils import q_to_qfeat_np, qfeat_to_q_np
+from reachability.models.loss import fk_mse_from_qfeat_wrapper
+from reachability.utils.utils import q_to_qfeat, qfeat_to_q
 
 class SimpleCINN(nn.Module):
     """
@@ -72,6 +72,7 @@ class SimpleCINN(nn.Module):
 @dataclass
 class CINNConditionalSampler(ConditionalGenerativeModel):
     """Wraps a SimpleCINN into fit/sample API."""
+    env: Any
     device: str = "cpu"
     n_blocks: int = 8
     hidden: int = 128
@@ -85,7 +86,6 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
     dH: int = 2
 
     # optional constraint shaping
-    L: float = 1.0
     lambda_fk: float = 0.0
 
     _model: SimpleCINN | None = None
@@ -96,15 +96,15 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
         np.random.seed(self.seed)
 
         H = H_train.astype(np.float32)
-        Q_feat = q_to_qfeat_np(Q_train.astype(np.float32))
+        Q_feat = q_to_qfeat(self.env, Q_train.astype(np.float32))
 
-        dH = H.shape[1]
         dQ_feat = Q_feat.shape[1]
-        print(f"dH = {dH}, dQ_feat = {dQ_feat}")
+        self.dQ_feat = dQ_feat
+        print(f"dH = {self.dH}, dQ_feat = {dQ_feat}")
 
         model = SimpleCINN(
             q_dim=dQ_feat,
-            h_dim=dH,
+            h_dim=self.dH,
             n_blocks=int(self.n_blocks),
             hidden=self.hidden,
             clamp=float(self.clamp)
@@ -141,7 +141,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
                     # sample z~N, invert to q_hat, penalize fk(q_hat)
                     z_samp = torch.randn_like(z)
                     q_hat, _ = model.reverse(z_samp, Hbatch)
-                    fk = fk_mse_from_qfeat(q_hat, Hbatch, L=self.L)
+                    fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, Hbatch)
 
                 loss = torch.mean(nll + self.lambda_fk * fk)
 
@@ -173,7 +173,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
 
         self._model = model.eval()
 
-    def sample(self, H: np.ndarray, n_samples: int, rng: np.random.Generator) -> np.ndarray:
+    def sample(self, H: np.ndarray, n_samples: int, rng: np.random.Generator) -> np.ndarray: # probably something wrong with handling normalization here
         """
         H: [B,2] numpy
         returns: [B, n_samples, 3] numpy Q=(x,y,theta)
@@ -190,15 +190,15 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
         B = Hbatch.shape[0] # batch size
 
         # z ~ N(0, I)
-        z = torch.randn((B * n_samples, self.dQ), device=self.device)
+        z = torch.randn((B * n_samples, self.dQ_feat), device=self.device)
         Hrep = Hbatch.repeat_interleave(n_samples, dim=0)
 
         with torch.no_grad():
             q_feat, _ = self._model.reverse(z, Hrep)
         
         q_feat_np = q_feat.detach().cpu().numpy().astype(np.float32)
-        Q_np = qfeat_to_q_np(q_feat_np)
-        return Q_np.reshape(B, n_samples, 3)
+        Q_np = qfeat_to_q(self.env, q_feat_np)
+        return Q_np.reshape(B, n_samples, self.dQ)
     
     def save(self, path: str | Path) -> None:
         if self._model is None:

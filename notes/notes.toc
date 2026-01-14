@@ -1,0 +1,36 @@
+\contentsline {section}{\tocsection {}{1}{Problem Description}}{1}{section.1}%
+\contentsline {subsection}{\tocsubsection {}{1.1}{Problem inputs}}{1}{subsection.1.1}%
+\contentsline {subsection}{\tocsubsection {}{1.2}{Problem outputs}}{1}{subsection.1.2}%
+\contentsline {section}{\tocsection {}{2}{Simplified problem v2: Round thing with a rotary 2-link arm}}{2}{section.2}%
+\contentsline {subsection}{\tocsubsection {}{2.1}{Setup}}{2}{subsection.2.1}%
+\contentsline {subsection}{\tocsubsection {}{2.2}{Forward kinematics}}{2}{subsection.2.2}%
+\contentsline {subsubsection}{\tocsubsubsection {}{2.2.1}{\texttt {fk\_mse\_from\_qfeat} loss function math}}{2}{subsubsection.2.2.1}%
+\contentsline {subsection}{\tocsubsection {}{2.3}{Training}}{2}{subsection.2.3}%
+\contentsline {subsubsection}{\tocsubsubsection {}{2.3.1}{Nearest neighbors baseline}}{2}{subsubsection.2.3.1}%
+\contentsline {subsubsection}{\tocsubsubsection {}{2.3.2}{Conditional VAE}}{2}{subsubsection.2.3.2}%
+\contentsline {subsubsection}{\tocsubsubsection {}{2.3.3}{Conditional INN}}{2}{subsubsection.2.3.3}%
+\contentsline {section}{\tocsection {}{3}{Simplified problem v1: Round thing with a fixed stick}}{2}{section.3}%
+\contentsline {subsection}{\tocsubsection {}{3.1}{Setup}}{2}{subsection.3.1}%
+\contentsline {subsection}{\tocsubsection {}{3.2}{Forward kinematics}}{2}{subsection.3.2}%
+\contentsline {subsection}{\tocsubsection {}{3.3}{Approaches}}{3}{subsection.3.3}%
+\contentsline {subsection}{\tocsubsection {}{3.4}{Evaluation}}{4}{subsection.3.4}%
+\contentsline {subsection}{\tocsubsection {}{3.5}{Extending to more general cases}}{4}{subsection.3.5}%
+\contentsline {subsection}{\tocsubsection {}{3.6}{Potential next-step extensions}}{4}{subsection.3.6}%
+\contentsline {section}{\tocsection {}{4}{Extra notes}}{4}{section.4}%
+\contentsline {subsection}{\tocsubsection {}{4.1}{Mode collapse}}{4}{subsection.4.1}%
+\contentsline {subsection}{\tocsubsection {}{4.2}{Conditional VAE theory}}{4}{subsection.4.2}%
+\contentsline {subsubsection}{\tocsubsubsection {}{4.2.1}{Motivation}}{5}{subsubsection.4.2.1}%
+\contentsline {subsubsection}{\tocsubsubsection {}{4.2.2}{Model architecture}}{5}{subsubsection.4.2.2}%
+\contentsline {subsection}{\tocsubsection {}{4.3}{FrEIA INN theory}}{5}{subsection.4.3}%
+\contentsline {subsubsection}{\tocsubsubsection {}{4.3.1}{Hand-wavy intuition}}{6}{subsubsection.4.3.1}%
+\contentsline {subsubsection}{\tocsubsubsection {}{4.3.2}{Why layers need to be invertible}}{6}{subsubsection.4.3.2}%
+\contentsline {subsubsection}{\tocsubsubsection {}{4.3.3}{More concrete math}}{6}{subsubsection.4.3.3}%
+\contentsline {subsection}{\tocsubsection {}{4.4}{Normalizing flow}}{6}{subsection.4.4}%
+\contentsline {subsection}{\tocsubsection {}{4.5}{Conceptual comparison of different methods}}{6}{subsection.4.5}%
+\contentsline {subsubsection}{\tocsubsubsection {}{4.5.1}{Flow}}{6}{subsubsection.4.5.1}%
+\contentsline {subsubsection}{\tocsubsubsection {}{4.5.2}{cVAE}}{6}{subsubsection.4.5.2}%
+\contentsline {subsubsection}{\tocsubsubsection {}{4.5.3}{Diffusion}}{6}{subsubsection.4.5.3}%
+\contentsline {subsection}{\tocsubsection {}{4.6}{Invertible neural networks vs. normalizing flow}}{6}{subsection.4.6}%
+\contentsline {subsubsection}{\tocsubsubsection {}{4.6.1}{INNs as generative models}}{6}{subsubsection.4.6.1}%
+\contentsline {subsubsection}{\tocsubsubsection {}{4.6.2}{INNs that are not normalizing flow models}}{6}{subsubsection.4.6.2}%
+\contentsline {section}{\tocsection {}{}{References}}{7}{section*.2}%

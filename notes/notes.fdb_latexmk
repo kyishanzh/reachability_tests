@@ -1,18 +1,20 @@
 # Fdb version 4
-["bibtex notes"] 1767575379 "notes.aux" "notes.bbl" "notes" 1767575395 0
+["bibtex notes"] 1768405107 "notes.aux" "notes.bbl" "notes" 1768405604 0
   "./reachability_references.bib" 1767575372 9451 a555a2bc6ef2278ce59a23b5f070091e ""
   "/usr/local/texlive/2023/texmf-dist/bibtex/bst/base/plain.bst" 1292289607 20613 bd3fbfa9f64872b81ac57a0dd2ed855f ""
-  "notes.aux" 1767575394 4727 27c7cd971a2a5b2484744d545a4a0b44 "pdflatex"
+  "notes.aux" 1768405604 5909 f6156f476be795c43e9b657846057a2e "pdflatex"
   (generated)
   "notes.bbl"
   "notes.blg"
   (rewritten before read)
-["pdflatex"] 1767575394 "/Users/niu/projects/reachability_tests/notes/notes.tex" "notes.pdf" "notes" 1767575395 0
-  "/Users/niu/projects/reachability_tests/notes/notes.tex" 1767575394 22864 03e0eb54d682a0fffd1130891b58bab2 ""
+["pdflatex"] 1768405603 "/Users/niu/projects/reachability_tests/notes/notes.tex" "notes.pdf" "notes" 1768405604 0
+  "/Users/niu/projects/reachability_tests/notes/notes.tex" 1768405603 24372 11a0543716e351d64df4317dfdbc17ed ""
   "/usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/local/texlive/2023/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2023/texmf-dist/fonts/tfm/adobe/courier/pcrr7t.tfm" 1136768653 960 379cc0019370a9e0208a0a3f949f847a ""
   "/usr/local/texlive/2023/texmf-dist/fonts/tfm/adobe/courier/pcrr8r.tfm" 1136768653 1292 bd42be2f344128bff6d35d98474adfe3 ""
+  "/usr/local/texlive/2023/texmf-dist/fonts/tfm/adobe/courier/pcrro7t.tfm" 1136768653 1116 3b5422ca7b3feeb8bd20316af67485c1 ""
+  "/usr/local/texlive/2023/texmf-dist/fonts/tfm/adobe/courier/pcrro8r.tfm" 1136768653 1544 4fb84cf2931ec523c2c6a08d939088ba ""
   "/usr/local/texlive/2023/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
   "/usr/local/texlive/2023/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex8.tfm" 1246382020 988 bdf658c3bfc2d96d3c8b02cfc1c94c20 ""
   "/usr/local/texlive/2023/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam10.tfm" 1246382020 916 f87d7c45f9c908e672703b83b72241a3 ""
@@ -49,7 +51,9 @@
   "/usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmti8.pfb" 1248133631 35660 fb24af7afbadb71801619f1415838111 ""
   "/usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb" 1248133631 34694 ad62b13721ee8eda1dcc8993c8bd7041 ""
   "/usr/local/texlive/2023/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb" 1136849748 45758 19968a0990191524e34e1994d4a31cb6 ""
+  "/usr/local/texlive/2023/texmf-dist/fonts/type1/urw/courier/ucrro8a.pfb" 1136849748 44404 ea3d9c0311883914133975dd62a9185c ""
   "/usr/local/texlive/2023/texmf-dist/fonts/vf/adobe/courier/pcrr7t.vf" 1136768653 1344 6ff472164bf9de0fb2e864b28ac156d9 ""
+  "/usr/local/texlive/2023/texmf-dist/fonts/vf/adobe/courier/pcrro7t.vf" 1136768653 1348 83f3fb6f885de67cb91aba9ac0b7d8ac ""
   "/usr/local/texlive/2023/texmf-dist/tex/context/base/mkii/supp-pdf.mkii" 1461363279 71627 94eb9990bed73c364d7f53f960cc8c5b ""
   "/usr/local/texlive/2023/texmf-dist/tex/generic/atbegshi/atbegshi.sty" 1575674566 24708 5584a51a7101caf7e6bbf1fc27d8f7b1 ""
   "/usr/local/texlive/2023/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty" 1576625341 40635 c40361e206be584d448876bba8a64a3b ""
@@ -195,13 +199,15 @@
   "/usr/local/texlive/2023/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1694645518 4623355 b8cad38412faebe1ce5b780a45db67bd ""
   "/usr/local/texlive/2023/texmf-var/web2c/pdftex/pdflatex.fmt" 1694645474 7883456 4098c4c6c312f18afe3dd0ee5dbb5a39 ""
   "/usr/local/texlive/2023/texmf.cnf" 1678822455 577 1b2b1af17af2508fb20dd85783af4050 ""
-  "notes.aux" 1767575394 4727 27c7cd971a2a5b2484744d545a4a0b44 "pdflatex"
-  "notes.bbl" 1767575379 348 bbfe71699a21a2578cafe32b15286822 "bibtex notes"
-  "notes.out" 1767575394 3242 4710e1bae7ca966cb43e52b7762e487b "pdflatex"
-  "notes.tex" 1767575394 22864 03e0eb54d682a0fffd1130891b58bab2 ""
+  "notes.aux" 1768405604 5909 f6156f476be795c43e9b657846057a2e "pdflatex"
+  "notes.bbl" 1768405107 348 bbfe71699a21a2578cafe32b15286822 "bibtex notes"
+  "notes.out" 1768405604 4238 b448d95947cc8b8826311f8c8e2e5779 "pdflatex"
+  "notes.tex" 1768405603 24372 11a0543716e351d64df4317dfdbc17ed ""
+  "notes.toc" 1768405604 3502 36378e463432c28559d6bde6cd75d258 "pdflatex"
   (generated)
   "notes.aux"
   "notes.log"
   "notes.out"
   "notes.pdf"
+  "notes.toc"
   (rewritten before read)

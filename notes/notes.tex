@@ -89,7 +89,7 @@
 \begin{document}
 
 \maketitle
-
+\tableofcontents
 \section{Problem Description}
 
 Our goal is to learn \textit{where the robot should stand} given a desired grasp. 
@@ -110,7 +110,49 @@ Our goal is to learn \textit{where the robot should stand} given a desired grasp
 
 Our target is to model some distribution $p(b, q\mid x_e)$ subject to these constraints $\uparrow$, ideally with some notion of pose quality (visibility, manipulability, clearance, etc.). 
 
-\section{Simplified problem}
+\section{Simplified problem v2: Round thing with a rotary 2-link arm}
+
+\subsection{Setup}
+
+\subsection{Forward kinematics}
+
+\subsubsection{\texttt{fk\_mse\_from\_qfeat} loss function math}
+
+Input to function: \texttt{mu\_q} ($mu_q$ = model's prediction of the robot's state) and $H$. We want to take this prediction, convert it into a valid physical configuration, calculate where the arms' tip should be in the world and compare that to a target position $H$. 
+
+\subsection{Training}
+
+\subsubsection{Nearest neighbors baseline} 
+
+\texttt{
+=== Results: NNDeterministicLookup ===\\
+hand\_err/mean                  0.014401\\
+hand\_err/median                0.013445\\
+hand\_err/p95                   0.028278\\
+coverage/max\_gap\_mean          6.283185\\
+coverage/max\_gap\_p95           6.283185\\
+coverage/kl\_to\_uniform         0.019053\\
+stochasticity/var\_Q\_fixed\_H    0.000000}
+
+\subsubsection{Conditional VAE}
+
+\textbf{Metrics to track:}
+\begin{itemize}
+    \item Total loss
+    \item Reconstruction loss term
+    \item KL loss term
+    \item Mean of $|\mu|$: if near 0 always, encoder might be collapsing
+    \item Mean of logvar: if very negative $\rightarrow$ tiny standard deviation $\rightarrow$ near-deterministic encoder
+    \item Gradient norm: detect instability or dead training
+    \item KL per dimension to show if any of the latent dimensions are ``dead'' (near-zero KL contribution)
+\end{itemize}
+
+\subsubsection{Conditional INN}
+
+
+
+
+\section{Simplified problem v1: Round thing with a fixed stick}
 
 \subsection{Setup}
 

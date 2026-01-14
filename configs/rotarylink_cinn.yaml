@@ -1,9 +1,13 @@
 seed: 0
-project_name: simple_cinn
+project_name: rotarylink_cinn
 
 env:
-  type: "Simple"
-  L: 1.0
+  type: "RotaryLink"
+  link_lengths: [0.8, 1.0]
+  joint_limits: None
+  n_links: 2
+  base_pos_eps: 0.3
+  base_heading_stddev: 0.2617993878 # np.pi/12
   workspace:
     hx_min: -2.0
     hx_max:  2.0
@@ -20,7 +24,7 @@ model:
   clamp: 2.0
   lr: 0.001
   batch_size: 256
-  epochs: 200
+  epochs: 50
   device: cpu
   lambda_fk: 0
 

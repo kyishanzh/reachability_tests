@@ -1,0 +1,28 @@
+data:
+  n_test: 2000
+  n_train: 20000
+env:
+  base_heading_stddev: 0.2617993878
+  base_pos_eps: 0.3
+  joint_limits: None
+  link_lengths:
+  - 0.8
+  - 1.0
+  n_links: 2
+  type: RotaryLink
+  workspace:
+    hx_max: 2.0
+    hx_min: -2.0
+    hy_max: 2.0
+    hy_min: -2.0
+eval:
+  eps_hist: 1.0e-09
+  n_bins_theta: 72
+  n_samples_per_H: 200
+model:
+  algorithm: auto
+  k: 50
+  metric: euclidean
+  name: knn
+  sigma: 0.35
+seed: 0

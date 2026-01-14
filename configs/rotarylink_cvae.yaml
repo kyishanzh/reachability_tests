@@ -1,8 +1,13 @@
 seed: 0
+project_name: rotarylink_cvae
 
 env:
-  type: "Simple"
-  L: 1.0
+  type: "RotaryLink"
+  link_lengths: [0.8, 1.0]
+  joint_limits: None
+  n_links: 2
+  base_pos_eps: 0.3
+  base_heading_stddev: 0.2617993878 # np.pi/12
   workspace:
     hx_min: -2.0
     hx_max:  2.0
@@ -15,13 +20,13 @@ data:
 
 model:
   name: "cvae"
-  z_dim: 4
+  z_dim: 6
   enc_hidden: [128, 128]
   dec_hidden: [128, 128]
   lr: 0.001
-  lambda_fk: 1.0
+  lambda_fk: 0.5
   batch_size: 256
-  epochs: 60
+  epochs: 500
   beta: 1.0
   device: "cpu" # set "cuda" if available
 

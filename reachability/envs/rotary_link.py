@@ -20,6 +20,7 @@ class RotaryLinkEnv:
     n_links: int = 2 # only working out math for this case for now, extend later potentially
     base_pos_eps: float = 0.2
     base_heading_stddev: float = np.pi / 12
+    name: str = "RotaryLink"
 
     @property
     def dH(self) -> int:
@@ -52,15 +53,15 @@ class RotaryLinkEnv:
         else:
             feasible_base_radii = [r_min, r_max]
         r_sampled = rng.uniform(*feasible_base_radii, size=(n, 1)).astype(np.float32)
-        print("r_sampled[0] = ", r_sampled[0])
+        # print("r_sampled[0] = ", r_sampled[0])
         # sample direction phi (where the base is around the donut)
         phi = rng.uniform(0, 2.0 * np.pi, size=(n, 1)).astype(np.float32)
         sinphi, cosphi = np.sin(phi), np.cos(phi)
         # compute base coordinates:
-        print("hx shape: ", hx.shape, " | r shape: ", r_sampled.shape, " | phi shape: ", phi.shape)
+        # print("hx shape: ", hx.shape, " | r shape: ", r_sampled.shape, " | phi shape: ", phi.shape)
         x = hx - r_sampled * sinphi # elementwise multiplication
         y = hy - r_sampled * cosphi
-        print("x shape: ", x.shape, " | y shape: ", y.shape)
+        # print("x shape: ", x.shape, " | y shape: ", y.shape)
         
         # base orientation psi - general constraint = robot faces target
         dx = hx - x
@@ -91,7 +92,7 @@ class RotaryLinkEnv:
             mask_th2 = (th2 >= th2_limits[0]) & (th2 <= th2_limits[1])
 
             valid_mask = (mask_th1 & mask_th2).flatten()
-            print("valid mask shape = ", valid_mask.shape)
+            # print("valid mask shape = ", valid_mask.shape)
 
             def filter_and_keep_dims(arr, mask):
                 return arr[mask].reshape(-1, 1)
@@ -111,11 +112,11 @@ class RotaryLinkEnv:
 
     def fk_hand(self, Q: np.ndarray) -> np.ndarray:
         """Returns hand position f(Q) given Q (Q shape = n samples x 5)"""
-        print("Q = ", Q)
+        # print("Q = ", Q)
         single = (Q.ndim == 1)
         if single:
             Q = Q.reshape(1, -1)
-            print("reshaped Q = ", Q)
+            # print("reshaped Q = ", Q)
         
         # 1. extract states
         b_x = Q[:, 0:1]
@@ -135,7 +136,7 @@ class RotaryLinkEnv:
         hand_y = b_y + np.sin(psi) * local_x + np.cos(psi) * local_y
 
         hand = np.concatenate([hand_x, hand_y], axis=1).astype(np.float32)
-        print("hand = ", hand)
+        # print("hand = ", hand)
         return hand
 
     def plot(self, one_Q: np.ndarray, one_H: np.ndarray, save=False, save_path=""):
@@ -210,13 +211,14 @@ class RotaryLinkEnv:
         return ax
 
     @staticmethod
-    def implied_psi_from_QH(Q: np.ndarray, H: np.ndarray) -> np.ndarray:
-        """
-        Returns the 'implied' base heading psi that points directly 
+    def target_bearing_world(Q: np.ndarray, H: np.ndarray) -> np.ndarray:
+        """World-frame bearing angle from base position (x, y) to target H.
+        -> Returns the 'implied' base heading psi that points directly 
         from the base (x, y) to the target (hx, hy).
         """
         hx, hy = H[:, 0], H[:, 1]
         bx, by = Q[:, 0], Q[:, 1]
         psi_implied = np.arctan2(hy - by, hx - bx)
+        # print(psi_implied)
         psi_implied = wrap_to_2pi(psi_implied)
         return psi_implied.astype(np.float32)
