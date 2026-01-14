@@ -81,7 +81,8 @@ def main():
         lambda_fk=float(mcfg.get("lambda_fk", 0.0)),
         wandb_run=run,
         dQ=Q_train.shape[1],
-        dH=H_train.shape[1]
+        dH=H_train.shape[1],
+        basexy_norm_type=mcfg.get("basexy_norm_type", "standardize")
     )
     model.fit(H_train=H_train, Q_train=Q_train)
 

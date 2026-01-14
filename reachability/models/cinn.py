@@ -14,7 +14,7 @@ import FrEIA.modules as Fm
 
 from reachability.models.base import ConditionalGenerativeModel
 from reachability.models.loss import fk_mse_from_qfeat_wrapper
-from reachability.utils.utils import q_to_qfeat, qfeat_to_q
+from reachability.utils.utils import q_to_qfeat, qfeat_to_q, h_to_hnorm
 
 class SimpleCINN(nn.Module):
     """
@@ -84,6 +84,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
     batch_size: int = 256
     dQ: int = 4
     dH: int = 2
+    basexy_norm_type: str = "bound"
 
     # optional constraint shaping
     lambda_fk: float = 0.0
@@ -95,8 +96,10 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
         torch.manual_seed(self.seed)
         np.random.seed(self.seed)
 
-        H = H_train.astype(np.float32)
-        Q_feat = q_to_qfeat(self.env, Q_train.astype(np.float32))
+        Q_feat = q_to_qfeat(self.env, Q_train.astype(np.float32), basexy_norm_type=self.basexy_norm_type)
+        # print("Q_train shape: ", Q_train.shape)
+        # print("H_train shape: ", H_train.shape)
+        H_norm = h_to_hnorm(self.env, H_train.astype(np.float32), basexy_norm_type=self.basexy_norm_type)
 
         dQ_feat = Q_feat.shape[1]
         self.dQ_feat = dQ_feat
@@ -112,7 +115,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
 
         opt = torch.optim.Adam(model.parameters(), lr=self.lr)
 
-        n = H.shape[0]
+        n = H_norm.shape[0]
         indices = np.arange(n)
 
         model.train()
@@ -125,7 +128,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
             
             for start in range(0, n, self.batch_size):
                 idx = indices[start:start+self.batch_size]
-                Hbatch = torch.from_numpy(H[idx]).to(self.device)
+                Hbatch = torch.from_numpy(H_norm[idx]).to(self.device)
                 Qbatch = torch.from_numpy(Q_feat[idx]).to(self.device)
 
                 # forward: z = f(q; H), log_det = log|det df/dx|
@@ -141,7 +144,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
                     # sample z~N, invert to q_hat, penalize fk(q_hat)
                     z_samp = torch.randn_like(z)
                     q_hat, _ = model.reverse(z_samp, Hbatch)
-                    fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, Hbatch)
+                    fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, Hbatch, basexy_norm_type=self.basexy_norm_type)
 
                 loss = torch.mean(nll + self.lambda_fk * fk)
 
@@ -186,7 +189,8 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
         torch.manual_seed(seed)
 
         # move conditioning inputs into torch
-        Hbatch = torch.from_numpy(H.astype(np.float32)).to(self.device) # [B, dH]
+        H_norm = h_to_hnorm(self.env, H, basexy_norm_type=self.basexy_norm_type)
+        Hbatch = torch.from_numpy(H_norm.astype(np.float32)).to(self.device) # [B, dH]
         B = Hbatch.shape[0] # batch size
 
         # z ~ N(0, I)
@@ -197,7 +201,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
             q_feat, _ = self._model.reverse(z, Hrep)
         
         q_feat_np = q_feat.detach().cpu().numpy().astype(np.float32)
-        Q_np = qfeat_to_q(self.env, q_feat_np)
+        Q_np = qfeat_to_q(self.env, q_feat_np, basexy_norm_type=self.basexy_norm_type)
         return Q_np.reshape(B, n_samples, self.dQ)
     
     def save(self, path: str | Path) -> None:

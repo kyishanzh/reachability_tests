@@ -13,7 +13,7 @@ import torch.nn.functional as F
 
 from reachability.models.base import ConditionalGenerativeModel
 from reachability.models.loss import fk_mse_from_qfeat_wrapper
-from reachability.utils.utils import q_to_qfeat, qfeat_to_q, grad_global_norm
+from reachability.utils.utils import q_to_qfeat, qfeat_to_q, grad_global_norm, h_to_hnorm
 
 class MLP(nn.Module):
     def __init__(self, in_dim: int, hidden: Sequence[int], out_dim: int):
@@ -116,6 +116,7 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
     seed: int = 0
     lambda_fk: float = 0.0 # FK penalty
     wandb_run: object | None = None
+    basexy_norm_type: str = "bound"
 
     _model: ConditionalVAE | None = None
 
@@ -123,10 +124,10 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
         torch.manual_seed(self.seed)
         np.random.seed(self.seed)
 
-        H = H_train.astype(np.float32)
-        Q_feat = q_to_qfeat(self.env, Q_train.astype(np.float32))
+        Q_feat = q_to_qfeat(self.env, Q_train.astype(np.float32), basexy_norm_type=self.basexy_norm_type)
+        H_norm = h_to_hnorm(self.env, H_train.astype(np.float32), basexy_norm_type=self.basexy_norm_type)
 
-        dH = H.shape[1]
+        dH = H_norm.shape[1]
         dQ_feat = Q_feat.shape[1]
         print(f"dH = {dH}, dQ_feat = {dQ_feat}")
 
@@ -140,7 +141,7 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
 
         opt = torch.optim.Adam(model.parameters(), lr=self.lr)
 
-        n = H.shape[0]
+        n = H_norm.shape[0]
         print(f"num samples = {n}")
         indices = np.arange(n)
 
@@ -155,13 +156,13 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
             
             for start in range(0, n, self.batch_size):
                 idx = indices[start:start+self.batch_size]
-                Hbatch = torch.from_numpy(H[idx]).to(self.device)
+                Hbatch = torch.from_numpy(H_norm[idx]).to(self.device)
                 Qbatch = torch.from_numpy(Q_feat[idx]).to(self.device)
 
                 out = model(Hbatch, Qbatch)
                 rec = gaussian_nll(Qbatch, out["mu_q"], out["logvar_q"]) # [B]
                 kl = kl_standard_normal(out["mu_z"], out["logvar_z"]) # [B]
-                fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], Hbatch)
+                fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], Hbatch, basexy_norm_type=self.basexy_norm_type)
                 loss = torch.mean(rec + self.beta * kl + self.lambda_fk * fk_err2)
 
                 opt.zero_grad(set_to_none=True)
@@ -222,7 +223,8 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
         torch.manual_seed(seed)
 
         # move conditioning inputs into torch
-        Hbatch = torch.from_numpy(H.astype(np.float32)).to(self.device) # [B, dH]
+        H_norm = h_to_hnorm(self.env, H, basexy_norm_type=self.basexy_norm_type)
+        Hbatch = torch.from_numpy(H_norm.astype(np.float32)).to(self.device) # [B, dH]
         B = Hbatch.shape[0] # batch size
 
         # sample z ~ N(0, I) for each (b, s) (batch element * sample index)
@@ -237,7 +239,7 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
             Q_feat = mu_q #+ std_q * eps # sampling from N(mu_q, diag(var_q)) -- noise makes performance worse w/o increasing diversity
 
         Q_feat_np = Q_feat.detach().cpu().numpy().astype(np.float32) # [B*S, 4]
-        Q_np = qfeat_to_q(self.env, Q_feat_np) # [B*S, 3]
+        Q_np = qfeat_to_q(self.env, Q_feat_np, basexy_norm_type=self.basexy_norm_type) # [B*S, 3]
         Q_np = Q_np.reshape(B, n_samples, self.dQ)
         return Q_np
     

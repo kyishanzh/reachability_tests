@@ -81,7 +81,8 @@ def main():
         device=str(mcfg.get("device", "cpu")),
         seed=int(cfg["seed"]),
         lambda_fk=float(mcfg.get("lambda_fk", 0.0)),
-        wandb_run=run
+        wandb_run=run,
+        basexy_norm_type=mcfg.get("basexy_norm_type", "bound")
     )
     model.fit(H_train=H_train, Q_train=Q_train)
 

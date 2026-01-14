@@ -26,11 +26,14 @@ model:
   lr: 0.001
   lambda_fk: 0.5
   batch_size: 256
-  epochs: 500
+  epochs: 50
   beta: 1.0
   device: "cpu" # set "cuda" if available
+  basexy_norm_type: "standardize"
 
 eval:
   n_samples_per_H: 200
   n_bins_theta: 72
   eps_hist: 1.0e-9
+
+# notes: "this is the first run for cINN that added standardization to H (for conditioning) too!"
