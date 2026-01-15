@@ -124,10 +124,12 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
         torch.manual_seed(self.seed)
         np.random.seed(self.seed)
 
+        H = H_train.astype(np.float32)
         Q_feat = q_to_qfeat(self.env, Q_train.astype(np.float32), basexy_norm_type=self.basexy_norm_type)
-        H_norm = h_to_hnorm(self.env, H_train.astype(np.float32), basexy_norm_type=self.basexy_norm_type)
+        H_norm = h_to_hnorm(self.env, H, basexy_norm_type=self.basexy_norm_type)
 
         dH = H_norm.shape[1]
+        self.dH = dH
         dQ_feat = Q_feat.shape[1]
         print(f"dH = {dH}, dQ_feat = {dQ_feat}")
 
@@ -157,12 +159,13 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
             for start in range(0, n, self.batch_size):
                 idx = indices[start:start+self.batch_size]
                 Hbatch = torch.from_numpy(H_norm[idx]).to(self.device)
+                Hbatch_wo_normalization = torch.from_numpy(H[idx]).to(self.device)
                 Qbatch = torch.from_numpy(Q_feat[idx]).to(self.device)
 
                 out = model(Hbatch, Qbatch)
                 rec = gaussian_nll(Qbatch, out["mu_q"], out["logvar_q"]) # [B]
                 kl = kl_standard_normal(out["mu_z"], out["logvar_z"]) # [B]
-                fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], Hbatch, basexy_norm_type=self.basexy_norm_type)
+                fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], Hbatch_wo_normalization, basexy_norm_type=self.basexy_norm_type)
                 loss = torch.mean(rec + self.beta * kl + self.lambda_fk * fk_err2)
 
                 opt.zero_grad(set_to_none=True)
@@ -251,29 +254,32 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
         path.parent.mkdir(parents=True, exist_ok=True)
         torch.save(
             {
-                "state_dict": self._model.state_dict(),
+                "dQ": self.dQ,
                 "dH": self._model.dH,
                 "dQ_feat": self._model.dQ_feat,
                 "z_dim": self.z_dim,
                 "enc_hidden": list(self.enc_hidden),
                 "dec_hidden": list(self.dec_hidden),
                 "beta": self.beta,
+                "basexy_norm_type": self.basexy_norm_type,
+                "state_dict": self._model.state_dict(),
             },
             path,
         )
 
     @classmethod
-    def load(cls, env: Any, dQ: int, path: str | Path, device: str = "cpu") -> "CVAEConditionalSampler":
+    def load(cls, env: Any, path: str | Path, device: str = "cpu") -> "CVAEConditionalSampler":
         path = Path(path)
         ckpt = torch.load(path, map_location=device)
 
         sampler = cls(
             env=env,
-            dQ=dQ,
+            dQ=int(ckpt["dQ"]),
             z_dim=ckpt["z_dim"],
             enc_hidden=tuple(ckpt["enc_hidden"]),
             dec_hidden=tuple(ckpt["dec_hidden"]),
             beta=ckpt["beta"],
+            basexy_norm_type=ckpt['basexy_norm_type'],
             device=device,
         )
 

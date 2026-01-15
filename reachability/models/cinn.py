@@ -84,6 +84,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
     batch_size: int = 256
     dQ: int = 4
     dH: int = 2
+    dQ_feat: int = 4 # MAKE THIS CLEANER SOMEHOW
     basexy_norm_type: str = "bound"
 
     # optional constraint shaping
@@ -96,10 +97,9 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
         torch.manual_seed(self.seed)
         np.random.seed(self.seed)
 
+        H = H_train.astype(np.float32)
         Q_feat = q_to_qfeat(self.env, Q_train.astype(np.float32), basexy_norm_type=self.basexy_norm_type)
-        # print("Q_train shape: ", Q_train.shape)
-        # print("H_train shape: ", H_train.shape)
-        H_norm = h_to_hnorm(self.env, H_train.astype(np.float32), basexy_norm_type=self.basexy_norm_type)
+        H_norm = h_to_hnorm(self.env, H, basexy_norm_type=self.basexy_norm_type)
 
         dQ_feat = Q_feat.shape[1]
         self.dQ_feat = dQ_feat
@@ -129,6 +129,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
             for start in range(0, n, self.batch_size):
                 idx = indices[start:start+self.batch_size]
                 Hbatch = torch.from_numpy(H_norm[idx]).to(self.device)
+                Hbatch_wo_normalization = torch.from_numpy(H[idx]).to(self.device)
                 Qbatch = torch.from_numpy(Q_feat[idx]).to(self.device)
 
                 # forward: z = f(q; H), log_det = log|det df/dx|
@@ -144,7 +145,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
                     # sample z~N, invert to q_hat, penalize fk(q_hat)
                     z_samp = torch.randn_like(z)
                     q_hat, _ = model.reverse(z_samp, Hbatch)
-                    fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, Hbatch, basexy_norm_type=self.basexy_norm_type)
+                    fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, Hbatch_wo_normalization, basexy_norm_type=self.basexy_norm_type)
 
                 loss = torch.mean(nll + self.lambda_fk * fk)
 
@@ -212,33 +213,39 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
         path.parent.mkdir(parents=True, exist_ok=True)
         torch.save(
             {
-                "state_dict": self._model.state_dict(),
                 "n_blocks": int(self.n_blocks),
                 "hidden": int(self.hidden),
                 "clamp": float(self.clamp),
-                "L": float(self.L),
-                "lambda_fk": float(self.lambda_fk)
+                "dQ": self.dQ,
+                "dH": self.dH,
+                "dQ_feat": self.dQ_feat,
+                "basexy_norm_type": self.basexy_norm_type,
+                "state_dict": self._model.state_dict(),
+                
             },
             path
         )
 
     @classmethod
-    def load(cls, path: str | Path, device: str = "cpu") -> "CINNConditionalSampler":
+    def load(cls, env: Any, path: str | Path, device: str = "cpu") -> "CINNConditionalSampler":
         path = Path(path)
         ckpt = torch.load(path, map_location=device)
         
         sampler = cls(
+            env=env,
             n_blocks=int(ckpt["n_blocks"]),
             hidden=int(ckpt["hidden"]),
             clamp=float(ckpt["clamp"]),
-            device=device,
-            L=float(ckpt.get("L", 1.0)),
-            lambda_fk=float(ckpt.get("lambda_fk", 0.0)),
+            dQ=int(ckpt["dQ"]),
+            dH=int(ckpt["dH"]),
+            dQ_feat=int(ckpt["dQ_feat"]),
+            basexy_norm_type=ckpt['basexy_norm_type'],
+            device=device
         )
 
         model = SimpleCINN(
-            q_dim=cls.dQ,
-            h_dim=cls.dH,
+            q_dim=sampler.dQ_feat,
+            h_dim=sampler.dH,
             n_blocks=int(sampler.n_blocks),
             hidden=sampler.hidden,
             clamp=float(sampler.clamp),

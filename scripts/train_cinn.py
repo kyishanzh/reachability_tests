@@ -1,4 +1,5 @@
 # run from root reachability_tests/: python -m scripts.train_cinn --config configs/simple_cinn.yaml --wandb
+# to save trained model, add tags --save --save_path "outputs/model_ckpts/cinn/cinn_rotary_1142026.pt" (etc.)
 from __future__ import annotations
 
 import argparse
@@ -30,7 +31,7 @@ def main():
         run = wandb.init(
             project=cfg.get("project_name", "simple_cinn"),
             config=cfg
-        )
+    )
     
     rng = set_seed(int(cfg["seed"]))
 

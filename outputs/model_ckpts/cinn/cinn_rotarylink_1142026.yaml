@@ -22,18 +22,12 @@ eval:
 model:
   basexy_norm_type: standardize
   batch_size: 256
-  beta: 1.0
-  dec_hidden:
-  - 128
-  - 128
+  clamp: 2.0
   device: cpu
-  enc_hidden:
-  - 128
-  - 128
-  epochs: 500
-  lambda_fk: 0.5
+  epochs: 200
+  hidden: 128
+  lambda_fk: 0
   lr: 0.001
-  name: cvae
-  z_dim: 6
-project_name: rotarylink_cvae
+  n_blocks: 16
+project_name: rotarylink_cinn
 seed: 0

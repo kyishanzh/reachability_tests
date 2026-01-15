@@ -24,7 +24,7 @@ model:
   clamp: 2.0
   lr: 0.001
   batch_size: 256
-  epochs: 50
+  epochs: 200
   device: cpu
   lambda_fk: 0
   basexy_norm_type: "standardize"
