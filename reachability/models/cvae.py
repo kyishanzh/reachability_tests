@@ -15,20 +15,7 @@ from reachability.data.loaders import DataLoader
 from reachability.models.base import ConditionalGenerativeModel
 from reachability.models.loss import fk_mse_from_qfeat_wrapper
 from reachability.utils.utils import q_to_qfeat, qfeat_to_q, grad_global_norm, h_to_hnorm
-
-class MLP(nn.Module):
-    def __init__(self, in_dim: int, hidden: Sequence[int], out_dim: int):
-        super().__init__()
-        layers: list[nn.Module] = []
-        d = in_dim
-        for h in hidden:
-            layers += [nn.Linear(d, h), nn.ReLU()]
-            d = h
-        layers += [nn.Linear(d, out_dim)]
-        self.net = nn.Sequential(*layers)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.net(x)
+from reachability.models.cvae_helpers import MLP, ResidualMLP, gaussian_nll, kl_standard_normal, get_beta
 
 class ConditionalVAE(nn.Module):
     """
@@ -40,8 +27,12 @@ class ConditionalVAE(nn.Module):
             dH: int,
             dQ_feat: int,
             z_dim: int,
-            enc_hidden: Sequence[int],
-            dec_hidden: Sequence[int],
+            # resnet setup
+            hidden_dim: int = 512,
+            num_blocks: int = 3,
+            # vanilla MLP setup
+            # enc_hidden: Sequence[int],
+            # dec_hidden: Sequence[int],
             logvar_clip: float = 6.0
     ):
         super().__init__()
@@ -50,8 +41,20 @@ class ConditionalVAE(nn.Module):
         self.z_dim = z_dim
         self.logvar_clip = logvar_clip
 
-        self.encoder = MLP(dH + dQ_feat, enc_hidden, 2 * z_dim) # [mu, logvar]
-        self.decoder = MLP(dH + z_dim, dec_hidden, 2 * dQ_feat) # [mu, logvar]
+        # self.encoder = MLP(dH + dQ_feat, enc_hidden, 2 * z_dim) # [mu, logvar]
+        self.encoder = ResidualMLP(
+            in_dim=dH + dQ_feat,
+            hidden_dim=hidden_dim,
+            out_dim=2 * z_dim,
+            num_blocks=num_blocks
+        )
+        # self.decoder = MLP(dH + z_dim, dec_hidden, 2 * dQ_feat) # [mu, logvar]
+        self.decoder = ResidualMLP(
+            in_dim=dH + z_dim,
+            hidden_dim=hidden_dim,
+            out_dim=2 * dQ_feat,
+            num_blocks=num_blocks
+        )
 
     def encode(self, H: torch.Tensor, Q_feat: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """q(z | H, Q_feat)"""
@@ -87,36 +90,16 @@ class ConditionalVAE(nn.Module):
             "logvar_q": logvar_q
         }
 
-def gaussian_nll(x: torch.Tensor, mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
-    """x, mu, logvar: shape [B, D]
-    returns: [B] NLL per example (sum over D)
-    ^ math: return -log(p(x | mu, var)) -> minimize neg log-likelihood"""
-    # 0.5 * [(x - mu)^2 / var + logvar + log 2pi]
-    return 0.5 * torch.sum(
-        ((x - mu) ** 2) * torch.exp(-logvar) + logvar + np.log(2.0 * np.pi),
-        dim=-1
-    )
-
-def kl_standard_normal(mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
-    """D_KL[N(mu, diag(var)) || N(0, I)] per example: shape [B]"""
-    return 0.5 * torch.sum(mu ** 2 + torch.exp(logvar) - 1.0 - logvar, dim=-1) # dim=-1 -> sum across dimensions (to get KL per sample)
-
-def get_beta(epoch: int, total_epochs: int, target_beta: float, cycles: int = 1) -> float:
-    """Cyclic annealing schedule."""
-    # simple linear warmup
-    warmup_epochs = total_epochs // 2
-    if epoch >= warmup_epochs:
-        return target_beta
-    return target_beta * (epoch / warmup_epochs)
-
 @dataclass
 class CVAEConditionalSampler(ConditionalGenerativeModel):
     """Wraps a torch ConditionalVAE into fit/sample API."""
     env: Any
     dQ: int
     z_dim: int # test more vals -- theoretically need at least DoF of environment to have a chance at doing well
-    enc_hidden: tuple[int, ...] = (128, 128)
-    dec_hidden: tuple[int, ...] = (128, 128)
+    # enc_hidden: tuple[int, ...] = (128, 128)
+    # dec_hidden: tuple[int, ...] = (128, 128)
+    hidden_dim: int = 512
+    num_blocks: int = 3
     lr: float = 1e-3
     batch_size: int = 256
     epochs: int = 50
@@ -132,7 +115,9 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
     def fit(self,
         train_loader: DataLoader,
         val_loader: DataLoader | None = None,
-        val_frequency: int = 10
+        val_frequency: int = 10,
+        save_best_val_ckpt: bool = True,
+        save_path: str = ""
     ) -> None:
         torch.manual_seed(self.seed)
         np.random.seed(self.seed)
@@ -145,13 +130,16 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
             dH=self.dH,
             dQ_feat=self.dQ_feat,
             z_dim=self.z_dim,
-            enc_hidden=self.enc_hidden,
-            dec_hidden=self.dec_hidden
+            hidden_dim=self.hidden_dim,
+            num_blocks=self.num_blocks,
+            # enc_hidden=self.enc_hidden,
+            # dec_hidden=self.dec_hidden
         ).to(self.device)
 
         opt = torch.optim.Adam(self._model.parameters(), lr=self.lr)
 
         self._model.train()
+        lowest_loss_so_far = float("inf")
         for ep in range(self.epochs):
             total_loss, total_rec, total_kl, total_fk = 0.0, 0.0, 0.0, 0.0
             n_seen = 0
@@ -224,7 +212,7 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
                         rec = gaussian_nll(batch['Q_feat'], out["mu_q"], out["logvar_q"])
                         kl = kl_standard_normal(out["mu_z"], out["logvar_z"]) # [B]
                         fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], Hraw, basexy_norm_type=self.basexy_norm_type)
-                        current_beta = self.beta #get_beta(ep, self.epochs, self.beta) # dynamic beta
+                        current_beta = get_beta(ep, self.epochs, self.beta) # dynamic beta
                         loss = torch.mean(rec + current_beta * kl + self.lambda_fk * fk_err2)
                         
                         batchsize = Hraw.shape[0] # last batch size might not equal self.batch_size
@@ -233,12 +221,20 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
                         total_val_kl += float(torch.mean(kl).item()) * batchsize
                         total_val_fk += float(torch.mean(fk_err2).item()) * batchsize
                         val_n_seen += batchsize
+                avg_val_loss = total_val_loss/val_n_seen
                 wandb_metrics.update({
-                    "val/loss": total_val_loss/val_n_seen,
+                    "val/loss": avg_val_loss,
                     "val/rec": total_val_rec/val_n_seen,
                     "val/kl": total_val_kl/val_n_seen,
                     "val/fk": total_val_fk/val_n_seen
                 })
+                # option to save model checkpoint with best val loss -- only kick in when half of the epochs have passed
+                if save_best_val_ckpt and save_path and ep > self.epochs / 2:
+                    if avg_val_loss < lowest_loss_so_far:
+                        print(f"Epoch {ep}: Val loss improved from {lowest_loss_so_far:.4f} to {avg_val_loss:.4f}. Saving to {save_path}")
+                        lowest_loss_so_far = avg_val_loss
+                        self.save(save_path)
+                    
 
             # wandb tracking
             if self.wandb_run is not None:
@@ -287,8 +283,10 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
                 "dH": self._model.dH,
                 "dQ_feat": self._model.dQ_feat,
                 "z_dim": self.z_dim,
-                "enc_hidden": list(self.enc_hidden),
-                "dec_hidden": list(self.dec_hidden),
+                "hidden_dim": self.hidden_dim,
+                "num_blocks": self.num_blocks,
+                # "enc_hidden": list(self.enc_hidden),
+                # "dec_hidden": list(self.dec_hidden),
                 "beta": self.beta,
                 "basexy_norm_type": self.basexy_norm_type,
                 "state_dict": self._model.state_dict(),
@@ -305,8 +303,10 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
             env=env,
             dQ=int(ckpt["dQ"]),
             z_dim=ckpt["z_dim"],
-            enc_hidden=tuple(ckpt["enc_hidden"]),
-            dec_hidden=tuple(ckpt["dec_hidden"]),
+            hidden_dim=ckpt["hidden_dim"],
+            num_blocks=ckpt["num_blocks"],
+            # enc_hidden=tuple(ckpt["enc_hidden"]),
+            # dec_hidden=tuple(ckpt["dec_hidden"]),
             beta=ckpt["beta"],
             basexy_norm_type=ckpt['basexy_norm_type'],
             device=device,
@@ -316,8 +316,10 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
             dH=ckpt["dH"],
             dQ_feat=ckpt["dQ_feat"],
             z_dim=ckpt["z_dim"],
-            enc_hidden=ckpt["enc_hidden"],
-            dec_hidden=ckpt["dec_hidden"],
+            hidden_dim=ckpt["hidden_dim"],
+            num_blocks=ckpt["num_blocks"],
+            # enc_hidden=ckpt["enc_hidden"],
+            # dec_hidden=ckpt["dec_hidden"],
         ).to(device)
 
         model.load_state_dict(ckpt["state_dict"])

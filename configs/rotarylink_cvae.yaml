@@ -15,14 +15,17 @@ env:
     hy_max:  2.0
 
 data:
-  n_train: 20000 # was 20000
+  n_train: 100000 # was 20000
   n_test:  2000
 
 model:
   name: "cvae"
+  type: "resMLP"
   z_dim: 6
-  enc_hidden: [128, 128]
-  dec_hidden: [128, 128]
+  hidden_dim: 512
+  num_blocks: 5
+  # enc_hidden: [128, 128, 128, 128, 128, 128]
+  # dec_hidden: [128, 128, 128, 128, 128, 128]
   lr: 0.001
   lambda_fk: 0.5
   batch_size: 256
@@ -37,4 +40,4 @@ eval:
   eps_hist: 1.0e-9
   sampling_temperature: 0
 
-# notes: "this is the first run for cINN that added standardization to H (for conditioning) too!"
+notes: "trying some optimizations together: 500 epochs, n_train = 100000, linear schedule for beta, resMLP with 5 residual blocks"

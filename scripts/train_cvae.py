@@ -1,5 +1,5 @@
 # running from root (reachability_tests/): python -m scripts.train_cvae --config configs/simple_cvae.yaml --wandb
-# to save trained model, add tags --save --save_path "outputs/model_ckpts/cvae/cvae_rotary_1142026.pt" (etc.)
+# to save trained model, add tags --save --save_path "outputs/model_ckpts/cvae/cvae_rotary_1152026.pt" (etc.)
 from __future__ import annotations
 
 import argparse
@@ -21,6 +21,8 @@ def main():
     ap.add_argument("--wandb", default=False, action="store_true")
     ap.add_argument("--save", default=False, action="store_true")
     ap.add_argument("--save_path")
+    ap.add_argument("--save_best", default=False, action="store_true")
+    ap.add_argument("--save_best_path")
     args = ap.parse_args()
 
     with open(args.config, "r") as f:
@@ -86,8 +88,10 @@ def main():
         env=env,
         dQ=train_ds.dQ,
         z_dim=int(mcfg["z_dim"]),
-        enc_hidden=tuple(mcfg["enc_hidden"]),
-        dec_hidden=tuple(mcfg["dec_hidden"]),
+        hidden_dim=int(mcfg["hidden_dim"]),
+        num_blocks=int(mcfg["num_blocks"]),
+        # enc_hidden=tuple(mcfg["enc_hidden"]),
+        # dec_hidden=tuple(mcfg["dec_hidden"]),
         lr=float(mcfg["lr"]),
         batch_size=int(mcfg["batch_size"]),
         epochs=int(mcfg["epochs"]),
@@ -98,7 +102,7 @@ def main():
         wandb_run=run,
         basexy_norm_type=mcfg.get("basexy_norm_type", "bound")
     )
-    model.fit(train_loader=train_loader, val_loader=val_loader, val_frequency=10)
+    model.fit(train_loader=train_loader, val_loader=val_loader, val_frequency=10, save_best_val_ckpt=args.save_best, save_path=args.save_best_path)
 
     # save model
     if args.save:
