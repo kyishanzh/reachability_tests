@@ -2,7 +2,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
 
-from reachability.types import Batch
 from reachability.data.datasets import Dataset
 
 @dataclass
@@ -14,13 +13,14 @@ class DataLoader:
 
     def __iter__(self):
         n = len(self.dataset)
-        idx = np.arange(n)
+        idcs = np.arange(n)
         if self.shuffle:
-            self.rng.shuffle(idx)
+            self.rng.shuffle(idcs)
         for start in range(0, n, self.batch_size):
-            sl = idx[start : start + self.batch_size]
-            yield self.dataset.batch(sl)
+            end = min(start + self.batch_size, n)
+            batch_idx = idcs[start:end]
+            yield self.dataset[batch_idx] # dataset.__getitem__
 
-    def all(self) -> Batch:
-        idx = np.arange(len(self.dataset))
-        return self.dataset.batch(idx)
+    def __len__(self) -> int:
+        """Returns number of batches per epoch"""
+        return (len(self.dataset) + self.batch_size - 1) // self.batch_size

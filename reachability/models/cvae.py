@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from reachability.data.loaders import DataLoader
 from reachability.models.base import ConditionalGenerativeModel
 from reachability.models.loss import fk_mse_from_qfeat_wrapper
 from reachability.utils.utils import q_to_qfeat, qfeat_to_q, grad_global_norm, h_to_hnorm
@@ -100,12 +101,20 @@ def kl_standard_normal(mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
     """D_KL[N(mu, diag(var)) || N(0, I)] per example: shape [B]"""
     return 0.5 * torch.sum(mu ** 2 + torch.exp(logvar) - 1.0 - logvar, dim=-1) # dim=-1 -> sum across dimensions (to get KL per sample)
 
+def get_beta(epoch: int, total_epochs: int, target_beta: float, cycles: int = 1) -> float:
+    """Cyclic annealing schedule."""
+    # simple linear warmup
+    warmup_epochs = total_epochs // 2
+    if epoch >= warmup_epochs:
+        return target_beta
+    return target_beta * (epoch / warmup_epochs)
+
 @dataclass
 class CVAEConditionalSampler(ConditionalGenerativeModel):
     """Wraps a torch ConditionalVAE into fit/sample API."""
     env: Any
     dQ: int
-    z_dim: int = 4 # test more vals -- theoretically need at least DoF of environment to have a chance at doing well
+    z_dim: int # test more vals -- theoretically need at least DoF of environment to have a chance at doing well
     enc_hidden: tuple[int, ...] = (128, 128)
     dec_hidden: tuple[int, ...] = (128, 128)
     lr: float = 1e-3
@@ -120,53 +129,45 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
 
     _model: ConditionalVAE | None = None
 
-    def fit(self, H_train: np.ndarray, Q_train: np.ndarray) -> None:
+    def fit(self,
+        train_loader: DataLoader,
+        val_loader: DataLoader | None = None,
+        val_frequency: int = 10
+    ) -> None:
         torch.manual_seed(self.seed)
         np.random.seed(self.seed)
 
-        H = H_train.astype(np.float32)
-        Q_feat = q_to_qfeat(self.env, Q_train.astype(np.float32), basexy_norm_type=self.basexy_norm_type)
-        H_norm = h_to_hnorm(self.env, H, basexy_norm_type=self.basexy_norm_type)
+        self.dH = train_loader.dataset.dH
+        self.dQ_feat = train_loader.dataset.dQ_feat
+        print(f"dH = {self.dH}, dQ_feat = {self.dQ_feat}")
 
-        dH = H_norm.shape[1]
-        self.dH = dH
-        dQ_feat = Q_feat.shape[1]
-        print(f"dH = {dH}, dQ_feat = {dQ_feat}")
-
-        model = ConditionalVAE(
-            dH = dH,
-            dQ_feat=dQ_feat,
+        self._model = ConditionalVAE(
+            dH=self.dH,
+            dQ_feat=self.dQ_feat,
             z_dim=self.z_dim,
             enc_hidden=self.enc_hidden,
             dec_hidden=self.dec_hidden
         ).to(self.device)
 
-        opt = torch.optim.Adam(model.parameters(), lr=self.lr)
+        opt = torch.optim.Adam(self._model.parameters(), lr=self.lr)
 
-        n = H_norm.shape[0]
-        print(f"num samples = {n}")
-        indices = np.arange(n)
-
-        model.train()
+        self._model.train()
         for ep in range(self.epochs):
-            np.random.shuffle(indices)
-            total_loss = 0.0
-            total_rec = 0.0
-            total_kl = 0.0
-            total_fk = 0.0
+            total_loss, total_rec, total_kl, total_fk = 0.0, 0.0, 0.0, 0.0
             n_seen = 0
-            
-            for start in range(0, n, self.batch_size):
-                idx = indices[start:start+self.batch_size]
-                Hbatch = torch.from_numpy(H_norm[idx]).to(self.device)
-                Hbatch_wo_normalization = torch.from_numpy(H[idx]).to(self.device)
-                Qbatch = torch.from_numpy(Q_feat[idx]).to(self.device)
 
-                out = model(Hbatch, Qbatch)
+            # Train loop
+            for batch in train_loader:
+                Hbatch = batch['H_norm']
+                Qbatch = batch['Q_feat']
+                Hraw = torch.from_numpy(batch["H_raw"]).to(self.device)
+
+                out = self._model(Hbatch, Qbatch)
                 rec = gaussian_nll(Qbatch, out["mu_q"], out["logvar_q"]) # [B]
                 kl = kl_standard_normal(out["mu_z"], out["logvar_z"]) # [B]
-                fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], Hbatch_wo_normalization, basexy_norm_type=self.basexy_norm_type)
-                loss = torch.mean(rec + self.beta * kl + self.lambda_fk * fk_err2)
+                fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], Hraw, basexy_norm_type=self.basexy_norm_type)
+                current_beta = self.beta #get_beta(ep, self.epochs, self.beta) # dynamic beta
+                loss = torch.mean(rec + current_beta * kl + self.lambda_fk * fk_err2)
 
                 opt.zero_grad(set_to_none=True)
                 loss.backward()
@@ -179,7 +180,7 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
                 total_fk += float(torch.mean(fk_err2).item()) * batchsize
                 n_seen += batchsize
 
-
+            # Training loss averages
             avg_loss = total_loss/n_seen
             avg_rec = total_rec/n_seen
             avg_kl = total_kl/n_seen
@@ -194,14 +195,14 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
                 latent_mu_abs_mean = latent_mu.abs().mean().item() # if near 0 always, encoder might be collapsing
                 latent_logvar_mean = latent_logvar.mean().item() # very negative -> tiny std -> near-deterministic encoder
                 # Gradient norm: helps detect instability or dead training
-                gnorm = grad_global_norm(model.parameters())
+                gnorm = grad_global_norm(self._model.parameters())
             
             wandb_metrics = {
                 "train/loss": avg_loss,
                 "train/recon": avg_rec,
                 "train/kl": avg_kl,
                 "train/fk": avg_fk,
-                "train/beta": self.beta,
+                "train/beta": current_beta,
                 "train/latent_mu_mean": latent_mu_abs_mean,
                 "train/latent_logvar_mean": latent_logvar_mean,
                 "train/gradient_norm": gnorm,
@@ -211,13 +212,41 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
             for i in range(z_dims_to_wandbtrack):
                 wandb_metrics[f"train/kl_zdim{i}"] = kl_per_dim[i].item()
 
+            # Validation loop
+            if val_loader is not None and (ep % val_frequency == 0):
+                total_val_loss, total_val_rec, total_val_kl, total_val_fk = 0.0, 0.0, 0.0, 0.0
+                val_n_seen = 0
+                self._model.eval()
+                with torch.no_grad():
+                    for batch in val_loader:
+                        Hraw = torch.from_numpy(batch["H_raw"]).to(self.device)
+                        out = self._model(batch['H_norm'], batch['Q_feat'])
+                        rec = gaussian_nll(batch['Q_feat'], out["mu_q"], out["logvar_q"])
+                        kl = kl_standard_normal(out["mu_z"], out["logvar_z"]) # [B]
+                        fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], Hraw, basexy_norm_type=self.basexy_norm_type)
+                        current_beta = self.beta #get_beta(ep, self.epochs, self.beta) # dynamic beta
+                        loss = torch.mean(rec + current_beta * kl + self.lambda_fk * fk_err2)
+                        
+                        batchsize = Hraw.shape[0] # last batch size might not equal self.batch_size
+                        total_val_loss += float(loss.item()) * batchsize
+                        total_val_rec += float(torch.mean(rec).item()) * batchsize
+                        total_val_kl += float(torch.mean(kl).item()) * batchsize
+                        total_val_fk += float(torch.mean(fk_err2).item()) * batchsize
+                        val_n_seen += batchsize
+                wandb_metrics.update({
+                    "val/loss": total_val_loss/val_n_seen,
+                    "val/rec": total_val_rec/val_n_seen,
+                    "val/kl": total_val_kl/val_n_seen,
+                    "val/fk": total_val_fk/val_n_seen
+                })
+
             # wandb tracking
             if self.wandb_run is not None:
                 wandb.log(wandb_metrics, step=ep)
+            
+        self._model.eval()
 
-        self._model = model.eval()
-
-    def sample(self, H: np.ndarray, n_samples: int, rng: np.random.Generator) -> np.ndarray:
+    def sample(self, H: np.ndarray, n_samples: int, rng: np.random.Generator, sampling_temperature: float = 1.0) -> np.ndarray:
         if self._model is None:
             raise RuntimeError("Call fit() before sample().")
         
@@ -237,12 +266,12 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
 
         with torch.no_grad():
             mu_q, logvar_q = self._model.decode(Hrep, z) #[B*S, dQ_feat]
-            # std_q = torch.exp(0.5 * logvar_q)
-            # eps = torch.randn_like(std_q)
-            Q_feat = mu_q #+ std_q * eps # sampling from N(mu_q, diag(var_q)) -- noise makes performance worse w/o increasing diversity
+            std_q = torch.exp(0.5 * logvar_q)
+            eps = torch.randn_like(std_q)
+            Q_feat = mu_q + std_q * eps * sampling_temperature # sampling from N(mu_q, diag(var_q))
 
-        Q_feat_np = Q_feat.detach().cpu().numpy().astype(np.float32) # [B*S, 4]
-        Q_np = qfeat_to_q(self.env, Q_feat_np, basexy_norm_type=self.basexy_norm_type) # [B*S, 3]
+        Q_feat_np = Q_feat.detach().cpu().numpy().astype(np.float32) # [B*S, dQfeat]
+        Q_np = qfeat_to_q(self.env, Q_feat_np, basexy_norm_type=self.basexy_norm_type) # [B*S, dQ]
         Q_np = Q_np.reshape(B, n_samples, self.dQ)
         return Q_np
     

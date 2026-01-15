@@ -30,7 +30,7 @@ class NNDeterministicLookup(ConditionalGenerativeModel):
         )
         self._nn.fit(self._H_train)
 
-    def sample(self, H: np.ndarray, n_samples: int, rng: np.random.Generator) -> np.ndarray:
+    def sample(self, H: np.ndarray, n_samples: int, rng: np.random.Generator, sampling_temperature: float = 0) -> np.ndarray:
         if self._nn is None or self._H_train is None or self._Q_train is None:
             raise RuntimeError("Call fit() before sample()")
         _, idcs = self._nn.kneighbors(H, return_distance=True) # idcs: [B,1]
@@ -72,7 +72,7 @@ class KNNConditionalSampler(ConditionalGenerativeModel):
         )
         self._nn.fit(self._H_train)
 
-    def sample(self, H: np.ndarray, n_samples: int, rng: np.random.Generator) -> np.ndarray:
+    def sample(self, H: np.ndarray, n_samples: int, rng: np.random.Generator, sampling_temperature: float = 0) -> np.ndarray:
         if self._nn is None or self._H_train is None or self._Q_train is None:
             raise RuntimeError("Call fit() before sample()")
         dists, idcs = self._nn.kneighbors(H, return_distance=True) #[B, k], [B, k]

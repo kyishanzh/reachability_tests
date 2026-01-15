@@ -24,3 +24,4 @@ eval:
   n_samples_per_H: 200
   n_bins_theta: 72
   eps_hist: 1.0e-9
+  sampling_temperature: 0

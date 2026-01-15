@@ -66,13 +66,13 @@ def revert_to_angle(cos, sin, eps):
     angle = np.arctan2(sin, cos)
     return np.mod(angle, 2.0 * np.pi)
 
-def revert_bounded_to_worldscale(env, x, y):
+def revert_bounded_to_worldscale(env, x, y): # will work for torch and numpy
     x_min, x_max, y_min, y_max = env.workspace.hx_min, env.workspace.hx_max, env.workspace.hy_min, env.workspace.hy_max
     x_reverted = 0.5 * (x + 1)*(x_max - x_min) + x_min
     y_reverted = 0.5 * (y + 1)*(y_max - y_min) + y_min
     return x_reverted, y_reverted
 
-def revert_standardized_to_worldscale(env, x, y):
+def revert_standardized_to_worldscale(env, x, y): # will work for torch and numpy
     x_min, x_max, y_min, y_max = env.workspace.hx_min, env.workspace.hx_max, env.workspace.hy_min, env.workspace.hy_max
     x_center, y_center = (x_max + x_min) / 2.0, (y_max + y_min) / 2.0
     x_scale, y_scale = (x_max - x_min) / 4.0, (y_max - y_min) / 4.0

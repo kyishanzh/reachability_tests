@@ -5,7 +5,7 @@ def normalize_to_unit_circle(c, s, eps):
     r = torch.sqrt(c * c + s * s + eps)
     return c/r, s/r
 
-def fk_mse_from_qfeat_wrapper(env, mu_q: torch.Tensor, H: torch.Tensor, eps: float=1e-8, basexy_norm_type: str = "bound") -> torch.Tensor:
+def fk_mse_from_qfeat_wrapper(env, mu_q: torch.Tensor, H: torch.Tensor, eps: float=1e-6, basexy_norm_type: str = "bound") -> torch.Tensor:
     if env.name == 'Simple':
         return fk_mse_from_qfeat_simple(env, mu_q, H, eps, basexy_norm_type=basexy_norm_type)
     elif env.name == 'RotaryLink':

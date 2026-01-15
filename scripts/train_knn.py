@@ -52,8 +52,8 @@ def main():
     train_ds = Dataset.generate(env=env, n=n_train, rng=rng)
     test_ds = Dataset.generate(env=env, n=n_test, rng=rng)
 
-    H_train, Q_train = train_ds.H, train_ds.Q
-    H_test = test_ds.H
+    H_train, Q_train = train_ds.H_raw, train_ds.Q_raw
+    H_test = test_ds.H_raw
 
     # eval config
     ecfg = cfg["eval"]

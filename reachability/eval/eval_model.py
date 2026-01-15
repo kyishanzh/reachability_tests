@@ -8,13 +8,14 @@ class EvalConfig:
     n_samples_per_H: int
     n_bins_theta: int # how finely we discretize angle space when estimatig distributions
     eps_hist: float # for KL div - prevents log(0)
+    sampling_temperature: float = 0.0
 
 def evaluate_model(env, model, H_test: np.ndarray, cfg: EvalConfig, rng: np.random.Generator) -> dict:
     """Evaluate on test H points:
     - Draw S samples per H
     - Compute error/coverage stats"""
     S = cfg.n_samples_per_H
-    Qs = model.sample(H_test, n_samples=S, rng=rng)  # [B,S,3]
+    Qs = model.sample(H_test, n_samples=S, rng=rng, sampling_temperature=cfg.sampling_temperature)  # [B,S,3]
     
     err = hand_error(env, Qs, H_test) # [B,S]
     err_mean = float(np.mean(err))

@@ -11,6 +11,7 @@ from reachability.utils.utils import set_seed, print_results
 from reachability.envs.simple import SimpleEnv, Workspace2D
 from reachability.envs.rotary_link import RotaryLinkEnv
 from reachability.data.datasets import Dataset
+from reachability.data.loaders import DataLoader
 from reachability.models.cinn import CINNConditionalSampler
 from reachability.eval.eval_model import EvalConfig, evaluate_model
 
@@ -20,7 +21,7 @@ def main():
     ap.add_argument("--config", type=str, default="../configs/simple_cinn.yaml")
     ap.add_argument("--wandb", default=False, action="store_true")
     ap.add_argument("--save", default=False, action="store_true")
-    ap.add_argument("--save_path", default="../outputs/model_ckpts")
+    ap.add_argument("--save_path")
     args = ap.parse_args()
 
     with open(args.config, "r") as f:
@@ -59,14 +60,27 @@ def main():
     n_train = int(cfg["data"]["n_train"])
     n_test = int(cfg["data"]["n_test"])
 
-    train_ds = Dataset.generate(env=env, n=n_train, rng=rng)
+    train_full_ds = Dataset.generate(env=env, n=n_train, rng=rng)
+    train_ds, val_ds = train_full_ds.split(split_ratio=0.9, rng=rng)
     test_ds = Dataset.generate(env=env, n=n_test, rng=rng)
 
-    H_train, Q_train = train_ds.H, train_ds.Q
-    H_test = test_ds.H
+    H_test = test_ds.H_raw
 
     # model config
     mcfg = cfg["model"]
+    device = str(mcfg.get("device", "cpu"))
+    
+    # data preprocessing
+    basexy_norm_type = mcfg.get("basexy_norm_type", "standardize")
+    train_ds.preprocess(basexy_norm_type=basexy_norm_type)
+    train_ds.to(device)
+    val_ds.preprocess(basexy_norm_type=basexy_norm_type)
+    val_ds.to(device)
+
+    # create loaders
+    batch_size = int(mcfg["batch_size"])
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, rng=rng)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=True, rng=rng)
 
     # model
     model = CINNConditionalSampler(
@@ -81,11 +95,11 @@ def main():
         seed=int(cfg["seed"]),
         lambda_fk=float(mcfg.get("lambda_fk", 0.0)),
         wandb_run=run,
-        dQ=Q_train.shape[1],
-        dH=H_train.shape[1],
+        dQ=train_ds.dQ,
+        dH=train_ds.dH,
         basexy_norm_type=mcfg.get("basexy_norm_type", "standardize")
     )
-    model.fit(H_train=H_train, Q_train=Q_train)
+    model.fit(train_loader=train_loader, val_loader=val_loader, val_frequency=10)
 
     # save model
     if args.save:

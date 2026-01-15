@@ -93,47 +93,43 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
     _model: SimpleCINN | None = None
     wandb_run: object | None = None
 
-    def fit(self, H_train: np.ndarray, Q_train: np.ndarray) -> None:
+    def fit(self,
+        train_loader: DataLoader,
+        val_loader: DataLoader | None = None,
+        val_frequency: int = 10
+    ) -> None:
         torch.manual_seed(self.seed)
         np.random.seed(self.seed)
 
-        H = H_train.astype(np.float32)
-        Q_feat = q_to_qfeat(self.env, Q_train.astype(np.float32), basexy_norm_type=self.basexy_norm_type)
-        H_norm = h_to_hnorm(self.env, H, basexy_norm_type=self.basexy_norm_type)
+        self.dH = train_loader.dataset.dH
+        self.dQ_feat = train_loader.dataset.dQ_feat
+        print(f"dH = {self.dH}, dQ_feat = {self.dQ_feat}")
 
-        dQ_feat = Q_feat.shape[1]
-        self.dQ_feat = dQ_feat
-        print(f"dH = {self.dH}, dQ_feat = {dQ_feat}")
-
-        model = SimpleCINN(
-            q_dim=dQ_feat,
+        self._model = SimpleCINN(
+            q_dim=self.dQ_feat,
             h_dim=self.dH,
             n_blocks=int(self.n_blocks),
             hidden=self.hidden,
             clamp=float(self.clamp)
         ).to(self.device)
 
-        opt = torch.optim.Adam(model.parameters(), lr=self.lr)
+        opt = torch.optim.Adam(self._model.parameters(), lr=self.lr)
 
-        n = H_norm.shape[0]
-        indices = np.arange(n)
-
-        model.train()
+        self._model.train()
         for ep in range(self.epochs):
-            np.random.shuffle(indices)
             total_loss = 0.0
             total_nll = 0.0
             total_fk = 0.0
             n_seen = 0
             
-            for start in range(0, n, self.batch_size):
-                idx = indices[start:start+self.batch_size]
-                Hbatch = torch.from_numpy(H_norm[idx]).to(self.device)
-                Hbatch_wo_normalization = torch.from_numpy(H[idx]).to(self.device)
-                Qbatch = torch.from_numpy(Q_feat[idx]).to(self.device)
+            # Train loop
+            for batch in train_loader:
+                Hbatch = batch['H_norm']
+                Qbatch = batch['Q_feat']
+                Hraw = torch.from_numpy(batch["H_raw"]).to(self.device)
 
                 # forward: z = f(q; H), log_det = log|det df/dx|
-                z, log_det = model(Qbatch, Hbatch)
+                z, log_det = self._model(Qbatch, Hbatch)
 
                 # NLL (dropping consts) for standard Normal base density:
                 # -log p(q | H) = 0.5||z||^2 - log_det + const
@@ -144,8 +140,8 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
                 if self.lambda_fk > 0.0:
                     # sample z~N, invert to q_hat, penalize fk(q_hat)
                     z_samp = torch.randn_like(z)
-                    q_hat, _ = model.reverse(z_samp, Hbatch)
-                    fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, Hbatch_wo_normalization, basexy_norm_type=self.basexy_norm_type)
+                    q_hat, _ = self._model.reverse(z_samp, Hbatch)
+                    fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, Hraw, basexy_norm_type=self.basexy_norm_type)
 
                 loss = torch.mean(nll + self.lambda_fk * fk)
 
@@ -163,21 +159,49 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
             avg_nll = total_nll/n_seen
             avg_fk = total_fk/n_seen
 
+            wandb_metrics = {
+                "train/loss": avg_loss,
+                "train/nll": avg_nll,
+                "train/fk": avg_fk,
+                "epoch": ep,
+            }
+
+            # Validation loop
+            if val_loader is not None and (ep % val_frequency == 0):
+                total_val_loss, total_val_nll, total_val_fk = 0.0, 0.0, 0.0
+                val_n_seen = 0
+                self._model.eval()
+                with torch.no_grad():
+                    for batch in val_loader:
+                        Hraw = torch.from_numpy(batch["H_raw"]).to(self.device)
+                        z, log_det = self._model(batch['Q_feat'], batch['H_norm'])
+                        nll = 0.5 * torch.sum(z * z, dim=1) - log_det
+                        fk = torch.zeros_like(nll) # default FK loss is 0
+                        if self.lambda_fk > 0.0:
+                            # sample z~N, invert to q_hat, penalize fk(q_hat)
+                            z_samp = torch.randn_like(z)
+                            q_hat, _ = self._model.reverse(z_samp, batch['H_norm'])
+                            fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, Hraw, basexy_norm_type=self.basexy_norm_type)
+                        loss = torch.mean(nll + self.lambda_fk * fk)
+                        
+                        batchsize = Hraw.shape[0] # last batch size might not equal self.batch_size
+                        total_val_loss += float(loss.item()) * batchsize
+                        total_val_nll += float(torch.mean(nll).item()) * batchsize
+                        total_val_fk += float(torch.mean(fk).item()) * batchsize
+                        val_n_seen += batchsize
+                wandb_metrics.update({
+                    "val/loss": total_val_loss/val_n_seen,
+                    "val/nll": total_val_nll/val_n_seen,
+                    "val/fk": total_val_fk/val_n_seen
+                })
+
             # wandb tracking
             if self.wandb_run is not None:
-                wandb.log(
-                    {
-                        "train/loss": avg_loss,
-                        "train/nll": avg_nll,
-                        "train/fk": avg_fk,
-                        "epoch": ep,
-                    },
-                    step=ep,
-                )
+                wandb.log(wandb_metrics, step=ep)
 
-        self._model = model.eval()
+        self._model.eval()
 
-    def sample(self, H: np.ndarray, n_samples: int, rng: np.random.Generator) -> np.ndarray: # probably something wrong with handling normalization here
+    def sample(self, H: np.ndarray, n_samples: int, rng: np.random.Generator, sampling_temperature: float) -> np.ndarray: # probably something wrong with handling normalization here
         """
         H: [B,2] numpy
         returns: [B, n_samples, 3] numpy Q=(x,y,theta)
