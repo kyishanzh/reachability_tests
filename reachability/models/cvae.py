@@ -109,6 +109,8 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
     lambda_fk: float = 0.0 # FK penalty
     wandb_run: object | None = None
     basexy_norm_type: str = "bound"
+    add_fourier_feat: bool = False
+    fourier_B: Any = None
 
     _model: ConditionalVAE | None = None
 
@@ -122,12 +124,12 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
         torch.manual_seed(self.seed)
         np.random.seed(self.seed)
 
-        self.dH = train_loader.dataset.dH
+        self.dH_feat = train_loader.dataset.dH_feat #TODO: Change self.dH to self.dH_feat?
         self.dQ_feat = train_loader.dataset.dQ_feat
-        print(f"dH = {self.dH}, dQ_feat = {self.dQ_feat}")
+        print(f"dH = {self.dH_feat}, dQ_feat = {self.dQ_feat}")
 
         self._model = ConditionalVAE(
-            dH=self.dH,
+            dH=self.dH_feat,
             dQ_feat=self.dQ_feat,
             z_dim=self.z_dim,
             hidden_dim=self.hidden_dim,
@@ -146,7 +148,7 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
 
             # Train loop
             for batch in train_loader:
-                Hbatch = batch['H_norm']
+                Hbatch = batch['H_feat']
                 Qbatch = batch['Q_feat']
                 Hraw = torch.from_numpy(batch["H_raw"]).to(self.device)
 
@@ -208,7 +210,7 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
                 with torch.no_grad():
                     for batch in val_loader:
                         Hraw = torch.from_numpy(batch["H_raw"]).to(self.device)
-                        out = self._model(batch['H_norm'], batch['Q_feat'])
+                        out = self._model(batch['H_feat'], batch['Q_feat'])
                         rec = gaussian_nll(batch['Q_feat'], out["mu_q"], out["logvar_q"])
                         kl = kl_standard_normal(out["mu_z"], out["logvar_z"]) # [B]
                         fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], Hraw, basexy_norm_type=self.basexy_norm_type)
@@ -234,15 +236,21 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
                         print(f"Epoch {ep}: Val loss improved from {lowest_loss_so_far:.4f} to {avg_val_loss:.4f}. Saving to {save_path}")
                         lowest_loss_so_far = avg_val_loss
                         self.save(save_path)
+                self._model.train()
                     
-
             # wandb tracking
             if self.wandb_run is not None:
                 wandb.log(wandb_metrics, step=ep)
             
         self._model.eval()
 
-    def sample(self, H: np.ndarray, n_samples: int, rng: np.random.Generator, sampling_temperature: float = 1.0) -> np.ndarray:
+    def sample(
+        self,
+        H: np.ndarray,
+        n_samples: int,
+        rng: np.random.Generator,
+        sampling_temperature: float = 1.0
+    ) -> np.ndarray:
         if self._model is None:
             raise RuntimeError("Call fit() before sample().")
         
@@ -251,8 +259,8 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
         torch.manual_seed(seed)
 
         # move conditioning inputs into torch
-        H_norm = h_to_hnorm(self.env, H, basexy_norm_type=self.basexy_norm_type)
-        Hbatch = torch.from_numpy(H_norm.astype(np.float32)).to(self.device) # [B, dH]
+        H_feat = h_to_hnorm(self.env, H, basexy_norm_type=self.basexy_norm_type, add_fourier_feat=self.add_fourier_feat, fourier_B=self.fourier_B)
+        Hbatch = torch.from_numpy(H_feat.astype(np.float32)).to(self.device) # [B, dH]
         B = Hbatch.shape[0] # batch size
 
         # sample z ~ N(0, I) for each (b, s) (batch element * sample index)

@@ -15,7 +15,7 @@ env:
     hy_max:  2.0
 
 data:
-  n_train: 100000 # was 20000
+  n_train: 20000 # was 20000
   n_test:  2000
 
 model:
@@ -29,10 +29,15 @@ model:
   lr: 0.001
   lambda_fk: 0.5
   batch_size: 256
-  epochs: 500
+  epochs: 50
   beta: 1.0
   device: "cpu" # set "cuda" if available
+
+features:
   basexy_norm_type: "standardize"
+  add_fourier_feat: false
+  fourier_feat_scale: 10
+  fourier_mapping_size: 64
 
 eval:
   n_samples_per_H: 200

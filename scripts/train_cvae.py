@@ -2,9 +2,11 @@
 # to save trained model, add tags --save --save_path "outputs/model_ckpts/cvae/cvae_rotary_1152026.pt" (etc.)
 from __future__ import annotations
 
+import torch
 import argparse
 import yaml
 import wandb
+import time
 from pathlib import Path
 
 from reachability.utils.utils import set_seed, print_results
@@ -70,12 +72,25 @@ def main():
     # model config
     mcfg = cfg["model"]
     device = str(mcfg.get("device", "cpu"))
-    
+    # device
+    if device.startswith("cuda") and torch.cuda.is_available():
+        print(f"[INFO] GPU name: {torch.cuda.get_device_name(0)}")
+    elif device.startswith("cuda"):
+        print("[WARNING] CUDA requested but not available — running on CPU")
+
     # data preprocessing
-    basexy_norm_type = mcfg.get("basexy_norm_type", "bound")
-    train_ds.preprocess(basexy_norm_type=basexy_norm_type)
+    ftcfg = cfg["features"]
+    basexy_norm_type = ftcfg.get("basexy_norm_type", "bound")
+    add_fourier_feat = bool(ftcfg.get("add_fourier_feat", False))
+    fourier_feat_scale = float(ftcfg.get("fourier_feat_scale", 10))
+    fourier_mapping_size = int(ftcfg.get("fourier_mapping_size", 256))
+    if add_fourier_feat:
+        B_gauss = rng.normal(loc=0.0, scale=1.0, size=(fourier_mapping_size, 2)) * fourier_feat_scale
+    else:
+        B_gauss = None
+    train_ds.preprocess(basexy_norm_type=basexy_norm_type, add_fourier_feat=add_fourier_feat, fourier_B=B_gauss)
     train_ds.to(device)
-    val_ds.preprocess(basexy_norm_type=basexy_norm_type)
+    val_ds.preprocess(basexy_norm_type=basexy_norm_type, add_fourier_feat=add_fourier_feat, fourier_B=B_gauss)
     val_ds.to(device)
 
     # create loaders
@@ -100,7 +115,9 @@ def main():
         seed=int(cfg["seed"]),
         lambda_fk=float(mcfg.get("lambda_fk", 0.0)),
         wandb_run=run,
-        basexy_norm_type=mcfg.get("basexy_norm_type", "bound")
+        basexy_norm_type=basexy_norm_type,
+        add_fourier_feat=add_fourier_feat,
+        fourier_B=B_gauss
     )
     model.fit(train_loader=train_loader, val_loader=val_loader, val_frequency=10, save_best_val_ckpt=args.save_best, save_path=args.save_best_path)
 
@@ -136,4 +153,6 @@ def main():
         run.finish()
 
 if __name__ == "__main__":
+    start = time.time()
     main()
+    print("Total time take (seconds): ", time.time() - start)

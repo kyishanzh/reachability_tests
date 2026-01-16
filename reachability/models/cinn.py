@@ -124,7 +124,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
             
             # Train loop
             for batch in train_loader:
-                Hbatch = batch['H_norm']
+                Hbatch = batch['H_feat']
                 Qbatch = batch['Q_feat']
                 Hraw = torch.from_numpy(batch["H_raw"]).to(self.device)
 
@@ -174,13 +174,13 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
                 with torch.no_grad():
                     for batch in val_loader:
                         Hraw = torch.from_numpy(batch["H_raw"]).to(self.device)
-                        z, log_det = self._model(batch['Q_feat'], batch['H_norm'])
+                        z, log_det = self._model(batch['Q_feat'], batch['H_feat'])
                         nll = 0.5 * torch.sum(z * z, dim=1) - log_det
                         fk = torch.zeros_like(nll) # default FK loss is 0
                         if self.lambda_fk > 0.0:
                             # sample z~N, invert to q_hat, penalize fk(q_hat)
                             z_samp = torch.randn_like(z)
-                            q_hat, _ = self._model.reverse(z_samp, batch['H_norm'])
+                            q_hat, _ = self._model.reverse(z_samp, batch['H_feat'])
                             fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, Hraw, basexy_norm_type=self.basexy_norm_type)
                         loss = torch.mean(nll + self.lambda_fk * fk)
                         
@@ -194,6 +194,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
                     "val/nll": total_val_nll/val_n_seen,
                     "val/fk": total_val_fk/val_n_seen
                 })
+                self._model.train()
 
             # wandb tracking
             if self.wandb_run is not None:
@@ -214,8 +215,8 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
         torch.manual_seed(seed)
 
         # move conditioning inputs into torch
-        H_norm = h_to_hnorm(self.env, H, basexy_norm_type=self.basexy_norm_type)
-        Hbatch = torch.from_numpy(H_norm.astype(np.float32)).to(self.device) # [B, dH]
+        H_feat = h_to_hnorm(self.env, H, basexy_norm_type=self.basexy_norm_type, rng=rng)
+        Hbatch = torch.from_numpy(H_feat.astype(np.float32)).to(self.device) # [B, dH]
         B = Hbatch.shape[0] # batch size
 
         # z ~ N(0, I)

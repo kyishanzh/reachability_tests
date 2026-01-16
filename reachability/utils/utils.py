@@ -25,10 +25,23 @@ def normalize_base_xy(env, x, y, basexy_norm_type: str = "bound") -> np.ndarray:
         raise ValueError(f"Unknown robot base (x,y) normalization method: {basexy_norm_type}")
     return x_norm, y_norm
 
-def h_to_hnorm(env, H: np.ndarray, basexy_norm_type: str = "bound") -> np.ndarray:
+def fourier_coord_feature(x: np.ndarray, B):
+    x_proj = (2.0 * np.pi * x) @ B.T
+    return np.concatenate([np.sin(x_proj), np.cos(x_proj)], axis=-1)
+
+def h_to_hnorm(
+    env,
+    H: np.ndarray,
+    basexy_norm_type: str = "bound",
+    add_fourier_feat: bool = False,
+    fourier_B: Any = None
+) -> np.ndarray:
     hx_norm, hy_norm = normalize_base_xy(env, H[:, 0:1], H[:, 1:2], basexy_norm_type=basexy_norm_type)
+    h_feat = np.concat([hx_norm, hy_norm], axis=1).astype(np.float32)
+    if add_fourier_feat:
+        return fourier_coord_feature(h_feat, fourier_B).astype(np.float32)
     # print("hx_norm shape: ", hx_norm.shape)
-    return np.concat([hx_norm, hy_norm], axis=1).astype(np.float32)
+    return h_feat
 
 def q_to_qfeat(env, Q: np.ndarray, basexy_norm_type: str = "bound") -> np.ndarray:
     """SimpleEnv: Q: [N,3]=(x,y,theta) -> Q_feat: [N,4]=(x,y,cos, sin)
