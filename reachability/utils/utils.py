@@ -112,7 +112,7 @@ def qfeat_to_q(env, Q_feat: np.ndarray, eps: float = 1e-8, basexy_norm_type: str
         psi = revert_to_angle(Q_feat[:, 2:3], Q_feat[:, 3:4], eps)
         theta1 = revert_to_angle(Q_feat[:, 4:5], Q_feat[:, 5:6], eps)
         theta2 = revert_to_angle(Q_feat[:, 6:7], Q_feat[:, 7:8], eps)
-        return np.concatenate([x_reverted, y_reverted, psi, theta1, theta2], axis=1).astype(np.float32)
+        return np.concatenate([x_reverted, y_reverted, wrap_to_2pi(psi), wrap_to_2pi(theta1), wrap_to_2pi(theta2)], axis=1).astype(np.float32)
     else:
         raise ValueError(f"Unknown environment, env.name = {env.name}")
 

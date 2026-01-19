@@ -104,10 +104,10 @@ class RotaryLinkEnv:
             th2_filtered = filter_and_keep_dims(th2, valid_mask)
 
             Q = np.concatenate([
-                x_filtered, y_filtered, psi_filtered, th1_filtered, th2_filtered
+                x_filtered, y_filtered, wrap_to_2pi(psi_filtered), wrap_to_2pi(th1_filtered), wrap_to_2pi(th2_filtered)
             ], axis=1).astype(np.float32)
         else:
-            Q = np.concatenate([x, y, psi, th1, th2], axis=1).astype(np.float32)
+            Q = np.concatenate([x, y, wrap_to_2pi(psi), wrap_to_2pi(th1), wrap_to_2pi(th2)], axis=1).astype(np.float32)
         return Q
 
     def fk_hand(self, Q: np.ndarray) -> np.ndarray:

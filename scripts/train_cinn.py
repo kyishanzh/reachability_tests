@@ -85,21 +85,29 @@ def main():
     # model
     model = CINNConditionalSampler(
         env=env,
-        n_blocks=int(mcfg["n_blocks"]),
-        hidden=int(mcfg["hidden"]),
-        clamp=float(mcfg.get("clamp", 2.0)),
-        lr=float(mcfg["lr"]),
-        batch_size=int(mcfg["batch_size"]),
+        # model
+        hidden_dim=int(mcfg["hidden_dim"]),
+        dQ=train_full_ds.dQ,
+        dQ_feat=train_loader.dataset.dQ_feat,
+        dCond=train_loader.dataset.dH,
+        num_blocks=int(mcfg["num_blocks"]),
+        clamp=float(mcfg.get("clamp", 1.0)),
+        basexy_norm_type=mcfg.get("basexy_norm_type", "standardize"),
+        # training
+        device=device,
         epochs=int(mcfg["epochs"]),
-        device=str(mcfg.get("device", "cpu")),
         seed=int(cfg["seed"]),
+        lr=float(mcfg["lr"]),
+        lr_milestones=mcfg.get("lr_milestones", [20, 40]),
+        lr_gamma=mcfg.get("lr_gamma", 0.1),
+        batch_size=batch_size,
+        grad_clip=float(mcfg.get("grad_clip", 10.)),
+        # optional constraint shaping
         lambda_fk=float(mcfg.get("lambda_fk", 0.0)),
-        wandb_run=run,
-        dQ=train_ds.dQ,
-        dH=train_ds.dH,
-        basexy_norm_type=mcfg.get("basexy_norm_type", "standardize")
+        # wandb
+        wandb_run=run
     )
-    model.fit(train_loader=train_loader, val_loader=val_loader, val_frequency=10)
+    model.fit(train_loader=train_loader, val_loader=val_loader, val_frequency=50)
 
     # save model
     if args.save:

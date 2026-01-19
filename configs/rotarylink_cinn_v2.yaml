@@ -1,0 +1,45 @@
+seed: 0
+project_name: rotarylink_cinn
+
+env:
+  type: "RotaryLink"
+  link_lengths: [0.8, 1.0]
+  joint_limits: None
+  n_links: 2
+  base_pos_eps: 0.3
+  base_heading_stddev: 0.2617993878 # np.pi/12
+  workspace:
+    hx_min: -2.0
+    hx_max:  2.0
+    hy_min: -2.0
+    hy_max:  2.0
+
+data:
+  n_train: 20000
+  n_test: 2000
+
+model:
+  # model
+  hidden_dim: 512
+  num_blocks: 16
+  clamp: 1.0
+  basexy_norm_type: "standardize"
+
+  # training
+  device: "cpu"
+  epochs: 60
+  lr: 5e-4
+  lr_milestones: [20, 40]
+  lr_gamma: 0.1
+  batch_size: 256
+  grad_clip: 10.
+
+  # optional constraint shaping
+  lambda_fk: 0
+
+eval:
+  n_samples_per_H: 200
+  n_bins_theta: 72
+  eps_hist: 1.0e-9
+  sampling_temperature: 0
+
