@@ -29,6 +29,7 @@ model:
   lr: 0.001
   lambda_fk: 0.5
   batch_size: 256
+  
   epochs: 200
   beta: 1.0
   device: "cpu" # set "cuda" if available

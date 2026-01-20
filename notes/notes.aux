@@ -16,41 +16,58 @@
 \@writefile{toc}{\contentsline {section}{\tocsection {}{1}{Problem Description}}{1}{section.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{1.1}{Problem inputs}}{1}{subsection.1.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{1.2}{Problem outputs}}{1}{subsection.1.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\tocsection {}{2}{Simplified problem v2: Round thing with a rotary 2-link arm}}{2}{section.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{2.1}{Setup}}{2}{subsection.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{2.2}{Forward kinematics}}{2}{subsection.2.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{2.2.1}{\texttt  {fk\_mse\_from\_qfeat} loss function math}}{2}{subsubsection.2.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{2.3}{Training}}{2}{subsection.2.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{2.3.1}{Nearest neighbors baseline}}{2}{subsubsection.2.3.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{2.3.2}{Conditional VAE}}{2}{subsubsection.2.3.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{2.3.3}{Conditional INN}}{2}{subsubsection.2.3.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\tocsection {}{3}{Simplified problem v1: Round thing with a fixed stick}}{2}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\tocsection {}{2}{LeKiwi robot}}{2}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\tocsection {}{3}{Simplified problem v2.1: Round thing with a rotary 2-link arm, generalizable to different workspace sizes}}{2}{section.3}\protected@file@percent }
+\newlabel{v2.1 setup}{{3.1}{2}{Setup}{subsection.3.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{3.1}{Setup}}{2}{subsection.3.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{3.2}{Forward kinematics}}{2}{subsection.3.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{3.3}{Approaches}}{3}{subsection.3.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{3.4}{Evaluation}}{4}{subsection.3.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{3.5}{Extending to more general cases}}{4}{subsection.3.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{3.6}{Potential next-step extensions}}{4}{subsection.3.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\tocsection {}{4}{Extra notes}}{4}{section.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{4.1}{Mode collapse}}{4}{subsection.4.1}\protected@file@percent }
-\newlabel{cvae}{{4.2}{4}{Conditional VAE theory}{subsection.4.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{4.2}{Conditional VAE theory}}{4}{subsection.4.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.2.1}{Motivation}}{5}{subsubsection.4.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.2.2}{Model architecture}}{5}{subsubsection.4.2.2}\protected@file@percent }
-\newlabel{inn}{{4.3}{5}{FrEIA INN theory}{subsection.4.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{4.3}{FrEIA INN theory}}{5}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{3.2}{Featurization}}{2}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{3.3}{Notes on this setup}}{3}{subsection.3.3}\protected@file@percent }
+\newlabel{collapse to unconditional}{{3.3.1}{3}{Collapsing the problem from a conditional generative problem $p(Q \mid H)$ to an unconditional problem $p(Q_{\text {feat}})$}{subsubsection.3.3.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{3.3.1}{Collapsing the problem from a conditional generative problem $p(Q \mid H)$ to an unconditional problem $p(Q_{\text  {feat}})$}}{3}{subsubsection.3.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{3.3.2}{Why we keep the conditional architecture}}{3}{subsubsection.3.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{3.3.3}{Egocentric learning (canonicalization) papers}}{3}{subsubsection.3.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\tocsection {}{4}{Simplified problem v2.0: Round thing with a rotary 2-link arm}}{4}{section.4}\protected@file@percent }
+\newlabel{v2.0}{{4}{4}{Simplified problem v2.0: Round thing with a rotary 2-link arm}{section.4}{}}
+\newlabel{v2.0 setup}{{4.1}{4}{Setup}{subsection.4.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{4.1}{Setup}}{4}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.1.1}{Critical error with this setup}}{5}{subsubsection.4.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.1.2}{Fixing this setup}}{6}{subsubsection.4.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{4.2}{Forward kinematics}}{6}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.2.1}{\texttt  {fk\_mse\_from\_qfeat} loss function math}}{6}{subsubsection.4.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{4.3}{Training}}{6}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.3.1}{Nearest neighbors baseline}}{6}{subsubsection.4.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.3.2}{Conditional VAE}}{6}{subsubsection.4.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.3.3}{Conditional INN}}{8}{subsubsection.4.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{4.4}{Additional notes}}{8}{subsection.4.4}\protected@file@percent }
+\newlabel{v2.0 featurization}{{4.4.1}{8}{Featurization}{subsubsection.4.4.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.4.1}{Featurization}}{8}{subsubsection.4.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\tocsection {}{5}{Simplified problem v1: Round thing with a fixed stick}}{8}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{5.1}{Setup}}{8}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{5.2}{Forward kinematics}}{9}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{5.3}{Approaches}}{9}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{5.4}{Evaluation}}{10}{subsection.5.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{5.5}{Extending to more general cases}}{10}{subsection.5.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{5.6}{Potential next-step extensions}}{11}{subsection.5.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\tocsection {}{6}{Extra notes}}{11}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{6.1}{Mode collapse}}{11}{subsection.6.1}\protected@file@percent }
+\newlabel{cvae}{{6.2}{11}{Conditional VAE theory}{subsection.6.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{6.2}{Conditional VAE theory}}{11}{subsection.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{6.2.1}{Motivation}}{11}{subsubsection.6.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{6.2.2}{Model architecture}}{11}{subsubsection.6.2.2}\protected@file@percent }
+\newlabel{inn}{{6.3}{12}{FrEIA INN theory}{subsection.6.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{6.3}{FrEIA INN theory}}{12}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{6.3.1}{Hand-wavy intuition}}{12}{subsubsection.6.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{6.3.2}{Why layers need to be invertible}}{12}{subsubsection.6.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{6.3.3}{More concrete math}}{12}{subsubsection.6.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{6.4}{Normalizing flow}}{12}{subsection.6.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{6.5}{Conceptual comparison of different methods}}{12}{subsection.6.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{6.5.1}{Flow}}{12}{subsubsection.6.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{6.5.2}{cVAE}}{12}{subsubsection.6.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{6.5.3}{Diffusion}}{12}{subsubsection.6.5.3}\protected@file@percent }
 \citation{INN2019}
-\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.3.1}{Hand-wavy intuition}}{6}{subsubsection.4.3.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.3.2}{Why layers need to be invertible}}{6}{subsubsection.4.3.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.3.3}{More concrete math}}{6}{subsubsection.4.3.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{4.4}{Normalizing flow}}{6}{subsection.4.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{4.5}{Conceptual comparison of different methods}}{6}{subsection.4.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.5.1}{Flow}}{6}{subsubsection.4.5.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.5.2}{cVAE}}{6}{subsubsection.4.5.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.5.3}{Diffusion}}{6}{subsubsection.4.5.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{4.6}{Invertible neural networks vs. normalizing flow}}{6}{subsection.4.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.6.1}{INNs as generative models}}{6}{subsubsection.4.6.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{4.6.2}{INNs that are not normalizing flow models}}{6}{subsubsection.4.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\tocsubsection {}{6.6}{Invertible neural networks vs. normalizing flow}}{13}{subsection.6.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{6.6.1}{INNs as generative models}}{13}{subsubsection.6.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\tocsubsubsection {}{6.6.2}{INNs that are not normalizing flow models}}{13}{subsubsection.6.6.2}\protected@file@percent }
 \bibstyle{plain}
 \bibdata{reachability_references}
 \bibcite{INN2019}{1}
@@ -59,5 +76,5 @@
 \newlabel{tocindent1}{17.77782pt}
 \newlabel{tocindent2}{29.38873pt}
 \newlabel{tocindent3}{0pt}
-\@writefile{toc}{\contentsline {section}{\tocsection {}{}{References}}{7}{section*.2}\protected@file@percent }
-\gdef \@abspage@last{7}
+\@writefile{toc}{\contentsline {section}{\tocsection {}{}{References}}{14}{section*.2}\protected@file@percent }
+\gdef \@abspage@last{14}

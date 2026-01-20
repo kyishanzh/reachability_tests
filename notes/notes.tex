@@ -110,15 +110,211 @@ Our goal is to learn \textit{where the robot should stand} given a desired grasp
 
 Our target is to model some distribution $p(b, q\mid x_e)$ subject to these constraints $\uparrow$, ideally with some notion of pose quality (visibility, manipulability, clearance, etc.). 
 
-\section{Simplified problem v2: Round thing with a rotary 2-link arm}
+\section{LeKiwi robot}
 
-\subsection{Setup}
+
+\section{Simplified problem v2.1: Round thing with a rotary 2-link arm, generalizable to different workspace sizes}
+
+\textcolor{blue}{\textbf{Context:} The previous setup specified in section \ref{v2.0} learns a model that is sensitive to workspace size.} We fix this problem in this new training setup.
+
+\subsection{Setup} \label{v2.1 setup}
+
+\begin{itemize}
+    \item\colorbox{lime!30}{Data generation pipeline:} Same as the data generation pipeline described in section \ref{v2.0 setup}.
+    \item \colorbox{pink!30}{Modeling assumptions:}
+    \begin{itemize}
+        \item Robot heading should face the target $H$
+    \end{itemize}
+    \item \colorbox{cyan!20}{Featurization:} defining $R = L_1 + L_2$ (robot reach),
+    \[Q = (x, y, \psi, \theta_1, \theta_2)  \mapsto \boxed{Q_{\text{feat}} = \left(\frac{x - h_x}{R}, \frac{y - h_y}{R}, \cos(\psi), \sin(\psi), \cos(\theta_1), \sin(\theta_1), \cos(\theta_2), \sin(\theta_2)\right)}\]
+    \[H = (h_x, h_y) \mapsto \boxed{C = (0, 0)} \]
+    The feature vector $H_{\text{feat}}$ is no longer necessary because $H$ has been encoded into our featurization for $(x,y)$ in $Q_{\text{feat}}$, but we keep it around in the code with \texttt{dCond = 0} in case we want to add conditioning features later (e.g., conditioning on pictures of the environment, obstacles, terrain, etc.).
+    \item \colorbox{violet!15}{Model learning setup:}
+    \begin{itemize}
+        \item Input: $Q_{\text{feat}}$ (+ empty conditioning vector $C$ )
+        \item Goal: Model learns distribution $p(Q_\text{feat} \mid C)$ that maximizes the predicted probability of seeing the ground truth data distribution $(Q_{\text{feat}}, C)$ pairs.
+    \end{itemize}
+    \item Things that the model should generalize across:
+    \begin{itemize}
+        \item The learned model should be workspace invariant:
+    \end{itemize}
+    \item Things that the model will not be capable of generalizing across:
+    \begin{itemize}
+        \item 
+    \end{itemize}
+\end{itemize}
+
+\subsection{Featurization}
+    \[Q = (x, y, \psi, \theta_1, \theta_2)  \mapsto Q_{\text{feat}} = \left(\frac{x - h_x}{R}, \frac{y - h_y}{R}, \cos(\psi), \sin(\psi), \cos(\theta_1), \sin(\theta_1), \cos(\theta_2), \sin(\theta_2)\right)\]
+
+We now prove that this feature vector $Q_{\text{feat}}$ is invariant to translation (moving the robot) and workspace boundary changes (changing the room size).
+
+\begin{proof}[Proof: Translation invariance] Say we train the robot in a lab at base coordinates $(x,y)$ and target coordinates $(h_x, h_y)$. We deploy it in a warehouse at base coordinates $(a,b)$ and target coordinates $(h_a, h_b)$. We want the model to learn a translation invariant mapping, so to the model, $(x,y) \in [-10, 10]^2$ (assuming we bound training data within some arbitrary square) should be equivalent to $(a,b) \in [-10000, 10000]^2$ etc. for all the coordinates. We show below that our $Q_{\text{feat}}$ feature transformation makes it s.t. coordinate scale does not matter to the model (hence achieving translation invariance).
+\vspace{1mm}
+\par Let the shift vector be $d = (d_x, d_y)$: $(a, b) = (x + d_x, y + d_y), \, (h_a, h_b) = (h_x + d_x, h_y + d_y)$. By our definition of $Q_{\text{feat}}$,
+\begin{align*}Q_{\text{feat}} &= \left(\frac{x + d_x - (h_x + d_x)}{R} , \frac{y + d_y - (h_y + d_y)}{R}, \text{angle features}\right) \\
+&= \left(\frac{x - h_x}{R}, \frac{y - h_y}{R}, \text{angle features}\right) \Rightarrow \text{in distribution with training data for model!}\end{align*}
+\end{proof}
+
+\begin{proof}[Proof: Workspace boundary invariance]
+We can also see that our featurization makes the model learned over $p(Q_\text{feat})$ invariant to workspace boundary definition because no features in $Q_{\text{feat}}$ are dependent on attributes of the training workspace:
+\[Q_{\text{feat}} = \left(\frac{x - h_x}{R}, \frac{y - h_y}{R}, \cos(\psi), \sin(\psi), \cos(\theta_1), \sin(\theta_1), \cos(\theta_2), \sin(\theta_2)\right) = \left(\frac{\Delta_x}{R}, \frac{\Delta_y}{R}, \ldots\right)\]
+By definition, $\Delta$ is invariant to workspace boundary (since all that matters is the relative vector between the base and the target pose).
+\end{proof}
+
+\textcolor{violet}{(Sidenote: the previous design of $Q_{\text{feat}}$ in section \ref{v2.0 setup} was translation invariant but \textit{not invariant to workspace boundary}.)}
+
+
+\subsection{Notes on this setup}
+
+\subsubsection{Collapsing the problem from a conditional generative problem $p(Q \mid H)$ to an unconditional problem $p(Q_{\text{feat}})$} \label{collapse to unconditional}
+
+Our definition of $Q_{\text{feat}}$ essentially performs a change of variables (coordinate canonicalization):
+\begin{itemize}
+    \item \textbf{The conditional view (allocentric/world frame):} We model $p(Q \mid H_{\text{global}})$. The density depends on $H$ because the ``cloud'' of valid solutions moves around the room as $H$ moves.
+    \item \textbf{The relative view (egocentric/canonical frame):} We define $\Delta = Q[0:2] - H_{\text{global}}$ (normalized). We model $p([\Delta, \text{angle features}] \mid H_{\text{global}})$. 
+\end{itemize}
+
+If the workspace is infinite and empty, the distribution of valid relative poses does not change depending on where you are in the room, i.e. $p([\Delta, \text{angle features}] \mid H_{\text{global}}) = p([\Delta, \text{angle features}])$. Our current workspace is infinite and empty, so we don't actually need to condition on $H_{\text{global}}$ anymore $\rightarrow$ conditional model has become unconditional!
+
+\subsubsection{Why we keep the conditional architecture}
+Given the analysis in section \ref{collapse to unconditional}, why do we keep the conditional architecture in the code?
+
+\begin{center}
+    While the problem is unconditional in an infinite void, it will become conditional when we move into the ``real world.'' 
+\end{center}
+E.g.:
+\begin{itemize}
+    \item \textbf{Target orientation:} Currently, the target $H$ is a point $(x,y)$. In the real world, targets have orientation (e.g., the handle of a mug).
+    \begin{itemize}
+        \item Relative position $\Delta$ is not independent of the mug's rotation $\rightarrow$ will need to condition\\ $p([\Delta, \text{angle features}] \mid H_{\text{angle}})$
+    \end{itemize}
+    \item \textbf{Obstacles:} In a real environment, the validity of a stance $\Delta$ depends on nearby obstacles.
+    \begin{itemize}
+        \item If there is a wall 0.5m to the right of the target, you can't stand there $\rightarrow$ will need to condition on a ``local occupancy grid'' etc. $p([\Delta, \text{angle features}] \mid \text{LocalMap})$
+    \end{itemize}
+\end{itemize}
+etc.! So we keep our model with a conditional architecture despite not feeding any conditions in for the current infinite void setup. In the future, we can potentially condition on \[H_{\text{context}} = [\cos(\theta_{\text{target}}), \sin(\theta_{\text{target}}), \text{dist\_to\_nearest\_obstacle}, \ldots]\]
+
+\subsubsection{Egocentric learning (canonicalization) papers}
+Read more on this! 
+\begin{itemize}
+    \item SE(3)-equivariant networks (manually enforce SE(2) invariance)
+    \item \href{https://research.google/blog/rearranging-the-visual-world/}{Transporter networks} (solve robotic manipulation by learning a ``kernel'' of the object in a canonical frame and then sliding it across the image (convolution) to find a match)
+    \item Residual policy learning (often learns a delta-action in a local frame rather than absolute actions)
+\end{itemize}
+
+
+\section{Simplified problem v2.0: Round thing with a rotary 2-link arm} \label{v2.0}
+
+\subsection{Setup} \label{v2.0 setup}
+
+\begin{itemize}
+    \item \colorbox{lime!30}{Data generation pipeline:}
+    \begin{enumerate}
+        \item Sample the target $H = (h_x, h_y)$ from our desired task distribution: $$H \sim \text{Uniform}(\text{workspace bounds})$$
+        \item Sample base position $(x,y)$ that can reach $H$ via sampling from the ``donut'' of valid positions:
+        \begin{itemize}
+            \item For the arm to reach $H$, the base must be at a distance $r$ away from $H$ where $r \in [R_{\text{min}}, R_{\text{max}}]$ and $R_{\text{min}} = |L_1 - L_2|$ (folded in), $R_{\text{max}} = L_1 + L_2$ (fully extended). 
+            \item We also want to avoid $R_{\text{min}}$ and $R_{\text{max}}$ exactly in the real world to avoid singularities, so we set some arbitrary $\epsilon$ as a proxy for manipulability (require the base sit some distance $r \in [R_{\text{min}} + \epsilon, R_{\text{max}} - \epsilon]$ away from $H$)
+            \item $\uparrow$ This sampling is implemented as:
+            \begin{align*}
+                r &\sim \text{Uniform}(R_{\text{min}} + \epsilon, R_{\text{max}} - \epsilon) \\
+                \phi &\sim \text{Uniform}(0, 2\pi) 
+            \end{align*}
+            Computing base $(x,y)$ coordinates from polar coordinates:
+            \[\boxed{x = h_x + r \cos (\phi), \quad y = h_y + r \sin (\phi)}\]
+        \end{itemize}
+
+        \item We assume the robot should be somewhat facing the target:
+        \begin{itemize}
+            \item Perfectly facing the target: $\psi_{\text{ideal}} = \text{atan2}(h_y - y, h_x - x)$\
+            \item Add noise to prevent the model from collapsing to a single deterministic mapping: 
+            \[\boxed{\psi = \psi_{\text{ideal}} + \delta}, \quad \delta \sim \mathcal{N}(0, \sigma^2)\]
+            where heading variance $\sigma^2$ is defined at model initiation (can manually pick).
+        \end{itemize}
+
+        \item Analytical arm IK (solve for $\theta_1, \theta_2$): Now that base $B = (x, y, \psi)$ is fixed, transform $H$ into the robot's local frame:
+        \begin{enumerate}
+            \item Local target: $h_\text{local} = R(\psi)^\top (H - B[0: 2]) \coloneq (u,v)$
+            \item Solve $\theta_2$ (elbow): Using law of cosines: \[\cos(\theta_2) = \frac{u^2 + v^2 - L_1^2 - L_2^2}{2L_1 L_2} \coloneq m\]
+            There are two solutions $\uparrow \quad \boxed{\theta_2^+ = \arccos(m), \theta_2^- = -\arccos(m)}$ since $\cos(x) = \cos(-x)$
+            \item Solve $\theta_1$ (shoulder): \[\boxed{\theta_1 = \text{atan2}(u,v) - \text{atan2}(L_2 \sin \theta_2, L_1 + L_2 \cos\theta_2)}\]
+        \end{enumerate}
+
+        \item At this step, we have generated $Q = (x, y, \psi, \theta_1, \pm\theta_2)$ for $H$! To enforce joint limits, we can filter to only keep $(Q, H)$ where $\theta_1, \theta_2 \in [\text{joint limits}]$ in the dataset.
+        \item \textit{Future additions:} If we want to address real world priors by biasing the dataset, i.e. adding cost functions for manipulability, clearance, etc.: we can incorporate these into dataset generation! For example, if we have some manipulability scoring function $S(Q)$, we can hard filter out $Q$ where $S(Q) < \text{threshold}$ or soft filter accept $Q$ with probability $P = \frac{S(Q)}{S_{\text{max}}}$
+    \end{enumerate}
+    \item \colorbox{pink!30}{Modeling assumptions:}
+    \begin{itemize}
+        \item Robot heading should face the target $H$
+    \end{itemize}
+    \item \colorbox{cyan!20}{Featurization} (elaborated in section \ref{v2.0 featurization}, \textcolor{red}{the way that we implement coordinate featurization results in model dependence on workspace size, as explained below} \textcolor{blue}{$\rightarrow$ next step is to deprecate this normalization method!!})
+    \[Q = (x, y, \psi, \theta_1, \theta_2)  \mapsto \boxed{Q_{\text{feat}} = (g(x), g(y), \cos(\psi), \sin(\psi), \cos(\theta_1), \sin(\theta_1), \cos(\theta_2), \sin(\theta_2))}\]
+    \[H = (h_x, h_y) \mapsto \boxed{H_{\text{norm}} = (g(h_x), g(h_y))}\]
+    where $g$ is a coordinate-normalization function to bound $x,y$ coordinates within a normalized range. 
+
+    \item \colorbox{violet!15}{Model learning setup:}
+    \begin{itemize}
+        \item Input: $Q_{\text{feat}}, H_{\text{norm}}$
+        \item Goal: Model learns distribution $p(Q_\text{feat} \mid H_{\text{norm}})$ that maximizes the predicted probability of seeing the ground truth data distribution $(Q_{\text{feat}}, H_\text{norm})$ pairs.
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Critical error with this setup}
+\textcolor{red}{\textbf{Problem:} This setup currently is dependent on the workspace being a nice rectangle for us to do normalization on the $(x,y)$ coordinates.} We have two methods $g(x,y)$ for normalizing coordinates right now that are mathematically equivalent except scaled, and both of them are problematic for learning a model that generalizes across varying workspace bounds:
+\begin{itemize}
+    \item Bound normalization (\texttt{bound}): 
+    \[x \mapsto 2 \cdot \frac{x - x_{\min}}{x_{\max} - x_{\min}} - 1, \quad y \mapsto 2 \cdot \frac{y- y_{\min}}{y_{\max} - y_{\min}} - 1\]
+
+    \item Standardization with geometric $z$-score (\texttt{standardize}): 
+    \[x_{\text{center}} = \frac{x_{\max} + x_{\min}}{2}, \quad y_{\text{center}} = \frac{y_{\max} + y_{\min}}{2}, \quad x_{\text{scale}} = \frac{x_{\max} - x_{\min}}{4}, \quad y_{\text{scale}} = \frac{y_{\max} - y_{\min}}{4}\]
+    \[x \mapsto \frac{x - x_{\text{center}}}{x_{\text{scale}}}, \quad y \mapsto \frac{y - y_{\text{center}}}{y_{\text{scale}}}\]
+\end{itemize}
+We can show that these two are the same normalization method up to a constant scale factor: define $W = x_{\text{max}} - x_{\text{min}}$, $C = (x_{\text{max}} + x_{\text{min}})/2$.
+\begin{align*}\text{Bound: } x \mapsto 2 \cdot \frac{x - x_{\min}}{x_{\max} - x_{\min}} - 1 &= \frac{2(x-x_{\text{min}})}{w} - \frac{w}{w}  \\
+    &= \frac{2(x-x_{\text{min}}) + x_{\min} - x_{\max}}{W} = \frac{2x - x_{\min} - x_{\max}}{W} = \boxed{\frac{2(x-C)}{W}} \\
+\text{Standardize: } x \mapsto \frac{x - x_{\text{center}}}{x_{\text{scale}}} &= \frac{x - \frac{x_{\max} + x_{\min}}{2}}{\frac{x_{\max} - x_{\min}}{4}} = \frac{4x - (2x_{\max} + 2x_{\min})}{x_{\max} - x_{\min}} = \boxed{\frac{4(x - C)}{W}}\end{align*}
+    
+The problem with this normalization method is that we convert absolute meters into relative ``room units'': the model sees the robot's reach not as ``1.5 meters,'' but as ``0.15 room units.''
+\begin{itemize}
+    \item If we change the workspace size from $10 \times 10$m to $20 \times 20$m: the model still thinks the arm reaches ``0.15 room units,'' 0.15 room units went from 1.5m in $10 \times 10$ room to 3m $20 \times 20$ room, yet the physical robot arm is still only 1.5 meters long. \textcolor{red}{The result is that the model will place the base too far away from the target when we move to a bigger room.}
+\end{itemize}
+
+Let us walk through what the model is learning in this situation:
+\begin{itemize}
+    \item \textbf{The physical truth:} The robot has a fixed physical reach $L_{\text{arm}}$ (e.g., 1.5m). For target $h$ to be reachable from base position $b$, we must have:
+    \[||b - h|| \leq L_{\text{arm}}\]
+
+    \item \textbf{The model's truth:} The model receives normalized coordinates $\hat{b}$ and $\hat{h}$. It learns a relationship between them based on the training data: \textit{the model does not know meters, it only knows ``normalized units.''} The model effectively learns a normalized reach threshold $K_{\text{learned}}$: \textcolor{cyan}{(to think about more: how would a cVAE/cINN represent this architecturally? what would the gaussians need to look like?)}
+    \[||\hat{b} - \hat{h}|| \leq K_{\text{learned}}\]
+
+    \item \textbf{The problem:} Now, let's substitute the normalization formula into the network's learned truth. Since $\hat{x} = \frac{4(x-C)}{W}$ (the scaling by 4 or 2 doesn't matter for the math below):
+    \[||\hat{b} - \hat{h}|| = \bigg|\bigg|\frac{4(b - C)}{W} - \frac{4(h - C)}{W}\bigg|\bigg| = ||b - h||\cdot \frac{4}{W} \]
+    Rearranging to see what physical distance the model \textit{thinks} corresponds to reach:
+    \[||b - h|| \leq K_{\text{learned}} \cdot \frac{W}{4}\]
+    \textcolor{red}{$\uparrow$ This shows a critical issue:} The robot's physical reach is now defined as a percentage of the room width. A concrete example of this going wrong:
+
+    \begin{itemize}
+        \item \textbf{Training:} You train in a 10m room ($W = 10$). The robot arm is 1.5m. The model learns $K_{\text{learned}} = 0.6$ (because $0.6 \times \tfrac{10}{4} = 1.5$)
+        \item \textbf{Testing:} You deploy in a 20m room ($W = 20$). The model still applies the rule $K_{\text{learned}} = 0.6$.
+        \begin{itemize}
+            \item The model generates a base position such that the normalized distance $||\hat{b} - \hat{h}||$ is 0.6.
+            \item Converting back to physical units: distance = $0.6 \times \tfrac{20}{4} = 3$ meters.
+            \item Result: The model places the robot 3 meters away from the target, but the robot arm is still only 1.5m long $\Rightarrow$ \textcolor{red}{robot cannot reach the target!}
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\textbf{TL;DR:} This model will not generalize to workspaces that are of different size than the one the training data came from!
+
+\subsubsection{Fixing this setup} See section \ref{v2.1 setup}.
 
 \subsection{Forward kinematics}
 
 \subsubsection{\texttt{fk\_mse\_from\_qfeat} loss function math}
 
-Input to function: \texttt{mu\_q} ($mu_q$ = model's prediction of the robot's state) and $H$. We want to take this prediction, convert it into a valid physical configuration, calculate where the arms' tip should be in the world and compare that to a target position $H$. 
+Input to function: \texttt{mu\_q} ($\mu_q$ = model's prediction of the robot's state) and $H$. We want to take this prediction, convert it into a valid physical configuration, calculate where the arms' tip should be in the world and compare that to a target position $H$. \textcolor{red}{Write out nicely later.}
 
 \subsection{Training}
 
@@ -145,11 +341,96 @@ stochasticity/var\_Q\_fixed\_H    0.000000}
     \item Mean of logvar: if very negative $\rightarrow$ tiny standard deviation $\rightarrow$ near-deterministic encoder
     \item Gradient norm: detect instability or dead training
     \item KL per dimension to show if any of the latent dimensions are ``dead'' (near-zero KL contribution)
+    
+    \textit{Why track $D_{KL}$(Standard normal $||$ latent dimension i) across all latent dimensions?}
+    \begin{enumerate}
+        \item This KL term measures the ``cost'' of sending information through the latent channel:
+        \begin{itemize}
+            \item High KL: The encoder is writing a lot of information into this dimension (it deviates strongly from the prior)
+            \item Zero KL: The encoder is outputting prior $\mathcal{N}(0, 1)$ regardless of the input. This dimension is ``dead.''
+        \end{itemize}
+        It is common for VAEs (especially with powerful decoders) to suffer from \textit{posterior collapse} where the decoder decides it is powerful enough to guess the output without looking at the latent code $z$. When this happens, the encoder ``gives up'' and just outputs noise (the prior) to satisfy the KL loss perfectly [since the collective loss is reconstruction + KL --- if reconstruction loss is the same regardless of what we have for $z$, the model will learn to output $z$ that induces minimal KL loss, i.e. directly output the prior over $z$]. Thus, if we see all KL dimensions = 0, the model has collapsed: the encoder is learning nothing. 
+        \item The manifold hypothesis (sparsity):
+        \begin{itemize}
+            \item Real-world data usually lies on a lower-dimensional ``manifold.'' 
+            \item E.g., you are modeling a 2D robotic arm with 2 DoF. You set the model's latent dim to 10. Ideally, you want the model to discover that only 2 dimensions are needed. 
+            \begin{itemize}
+                \item Good result: 2 dimensions have high KL (encoding the angles), and 8 dimensions have KL $\approx 0$ (noise).
+                \item Bad result: The information is smeared across all 10 dimensions (entanglement)
+            \end{itemize}
+        \end{itemize}
+        We generally prefer disentangled representations where specific latent dimensions map to specific physical properties. If \texttt{kl\_dim3} spikes only when the robot rotates its wrist etc., that dimensions has learned a specific semantic feature.
+        \item Auto-pruning: Because the VAE objective function is Loss = Reconstruction + $\beta \cdot \text{KL}$, the $\beta \cdot \text{KL}$ term acts as a penalty for using latent capacity. It forces the model to be efficient. It effectively asks the model: ``Is this extra dimension necessary to reduce reconstruction error? If not, set it to the prior (KL = 0) to save cost.''
+    \end{enumerate}
 \end{itemize}
 
-\subsubsection{Conditional INN}
+\textit{How is \texttt{z\_dim} usually determined?}
+\begin{itemize}
+    \item Partly an art and partly science! Conceptually, \texttt{z\_dim} represents the number of independent variables the model needs to describe the data. Some standard methods:
+    \begin{enumerate}
+        \item Physical approach (intrinsic dimensionality): e.g. count the number of DoF of the system! Set \texttt{z\_dim} slightly higher than the intrinsic dimension (number DoF) to allow the model some ``slack'' to model noise/non-linearities that aren't perfectly captured by the physics.
+        \item The ``active units'' approach (pruning):
+        \begin{enumerate}
+            \item Overshoot: Set \texttt{z\_dim} larger than necessary.
+            \item Regularize: Use $\beta$-VAE (where $\beta >1$)
+            \item Inspect: Look at the \texttt{kl\_per\_dim} metrics.
+        \end{enumerate}
+        Because the KL term penalizes information storage, the VAE will naturally try to ``shut off'' unnecessary dimensions (drive their KL to 0). E.g., if we set \texttt{z\_dim = 16} and see that 5 dimensions have high KL and 1 have near-zero KL, the model has told us that the true dimensionality is 5. We can then retrain with \texttt{z\_dim = 5} (or 6 etc.) for a more compact model.
+
+        \item Hyperparameter sweep (the elbow plot): If we don't know the physics of the problem (e.g., generating images of faces), we can run a grid search. Train models with \texttt{z\_dim = [2, 4, 8, 16, 32, 64]} and plot the reconstruction loss (NLL) vs \texttt{z\_dim}. 
+        \begin{itemize}
+            \item Low \texttt{z}: High error (underfitting). The bottleneck is too tight
+            \item High \texttt{z}: Low error, but diminishing returns with increasing \texttt{z} at some point.
+            \item The ``elbow'': The point where adding more dimensions stops significantly lowering the reconstruction error = optimal \texttt{z\_dim}!
+        \end{itemize}
+    \end{enumerate}
+\end{itemize}
+
+\textit{What prevents a VAE from memorizing instead of learning when \texttt{z\_dim} = exact number DoF in system?}
+\begin{itemize}
+    \item If you gave a standard Autoencoder \texttt{z\_dim = 5}, it would simply memorize the dataset $\rightarrow$ it would essentially build a hash map where \texttt{Input A} maps to \texttt{Point A} in latent space. 
+    \item The VAE prevents this through (1) sampling noise and (2) the KL penalty.
+    \begin{enumerate}
+        \item Sampling noise: A standard autoencoder maps an input datapoint to a specific point in latent space (e.g., ``This specific robot pose is exactly coordinate \texttt{(2.1, -0.5)}''). Contrarily, a VAE maps an input datapoint to a probability distribution in latent space (``This specific robot pose is somewhere in the region centered at \texttt{(2.1, -0.5)} with a radius of 0.1''). This prevent memorization: because of the sampling step ($z = \mu + \sigma \cdot \epsilon$), the decoder never sees the same input twice $\rightarrow$ in epoch 1, the latent $z$ corresponding to $x$ might be 2.1, then 2.05 in epoch 2, 2.11 in epoch 3, etc. $\rightarrow$ the decoder cannot just memorize ``When I see \texttt{2.1}, output $x$,'' forcing generalization rather than memorization.
+        \item The KL penalty: 
+        \begin{itemize}
+            \item \textit{Q: What prevents the encoder from making the cloud around $\mu$ really, really small?} If the encoder shrinks the variance to zero, the cloud becomes a single point, and the VAE turns back into a standard AE that can memorize everything.
+            \item $\uparrow$ \textit{But the KL divergence term prevents this!} KL loss for a Gaussian $\coloneq D_{KL} = 0.5 \sum (1 + \log (\sigma^2) - \mu^2 - \sigma^2) \Longrightarrow$ if the model tries to memorize by making $\sigma \rightarrow 0$, $\log(0) \rightarrow -\infty$ and the loss goes to infinity.
+        \end{itemize}
+    \end{enumerate}
+    So for VAEs there is a tradeoff during training! To get low reconstruction error (memorization), the model wants to shrink $\sigma$ to be precise. To get low KL error (regularization), the model wants to expand $\sigma$ to be 1 (unit standard normal). TL;DR: Sampling + KL penalty collectively prevent the VAE to act like a lookup table even when \texttt{z\_dim} $\geq$ true DoF in the system.
+\end{itemize}
 
 
+\subsubsection{Conditional INN} \textbf{Metrics to track:}
+\begin{itemize}
+    \item FILL IN
+\end{itemize}
+
+
+\subsection{Additional notes}
+
+\subsubsection{Featurization} \label{v2.0 featurization}
+We featurize data $Q = (x, y, \psi, \theta_1, \theta_2) \in \mathbb{R}^5$ as:
+\[Q_{\text{feat}} = (x_\text{norm}, y_\text{norm}, \cos(\psi), \sin(\psi), \cos(\theta_1), \sin(\theta_1), \cos(\theta_2), \sin(\theta_2)) \in \mathbb{R}^8\]
+
+We also featurize $H = (h_x, h_y) \mapsto H_{\text{feat}} = (h_{x, \text{norm}}, h_{y, \text{norm}})$ to ensure that the features being conditioned upon are in the same scale.
+
+\begin{enumerate}
+    \item Angle featurization of angle $\mapsto \cos(\text{angle}), \sin(\text{angle})$ is to bound the values within $[-1, 1]$ and avoid the wrapping problem (where the model outputting 0 is equivalent to $2\pi$ but numerically at the two ends).
+    \item Base position $(x,y)$ is normalized to avoid arbitrary weighing between rotation features vs. position features (i.e., 2000mm will look a lot ``bigger'' to the model than 2m, especially relative to the bounded angle features). Two normalization methods are implemented:
+    \begin{itemize}
+        \item Bounding (\texttt{bound} in the code): This method takes any rectangular workspace and squashes it down to a $[-1, 1]^2$ box \[x \mapsto 2 \cdot \frac{x - x_{\min}}{x_{\max} - x_{\min}} - 1, \quad y \mapsto 2 \cdot \frac{y- y_{\min}}{y_{\max} - y_{\min}} - 1\]
+        \item Standardization with geometric $z$-score (\texttt{standardize} in the code): Define
+        \[x_{\text{center}} = \frac{x_{\max} + x_{\min}}{2}, \quad y_{\text{center}} = \frac{y_{\max} + y_{\min}}{2}, \quad x_{\text{scale}} = \frac{x_{\max} - x_{\min}}{4}, \quad y_{\text{scale}} = \frac{y_{\max} - y_{\min}}{4}\]
+         \[x \mapsto \frac{x - x_{\text{center}}}{x_{\text{scale}}}, \quad y \mapsto \frac{y - y_{\text{center}}}{y_{\text{scale}}}\]
+         Notice the effect of this normalization is that:
+         \[x_{\min} \mapsto \frac{(x_{\min} - x_{\max})/2}{(x_{\max} - x_{\min})/4} = -2, \quad x_{\max} \mapsto \frac{(x_{\max}- x_{\min})/2}{(x_{\max} - x_{\min})/4} = 2\]
+         And the same for $y$! So the workspace has effectively been standardized down to $[-2, 2]$.
+    \end{itemize}
+\end{enumerate}
+
+Empirically, we observe that method 2 (standardization) leads to much better cINN training performance (\texttt{hand\_err\_mean} of 0.28 vs. 0.062 when all other training conditions are held constant), whilst both lead to similar cVAE performance. Some theories as to why the cINN approach greatly prefers method 2 for base position normalization: \textcolor{red}{Look into / think about later.}
 
 
 \section{Simplified problem v1: Round thing with a fixed stick}

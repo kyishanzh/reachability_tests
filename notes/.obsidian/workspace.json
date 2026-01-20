@@ -62,7 +62,7 @@
             }
           }
         ],
-        "currentTab": 1
+        "currentTab": 3
       }
     ],
     "direction": "vertical"
@@ -119,7 +119,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "38b549238e8dbc24",
@@ -135,7 +136,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Todos.md",
+                "file": "Robot setups to build.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -145,7 +146,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for Todos"
+              "title": "Backlinks for Robot setups to build"
             }
           },
           {
@@ -154,12 +155,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Todos.md",
+                "file": "Robot setups to build.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from Todos"
+              "title": "Outgoing links from Robot setups to build"
             }
           },
           {
@@ -197,13 +198,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Todos.md",
+                "file": "Robot setups to build.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Todos"
+              "title": "Outline of Robot setups to build"
             }
           }
         ]
@@ -224,21 +225,22 @@
       "bases:Create new base": false
     }
   },
-  "active": "4d5bd3b38de6987f",
+  "active": "8228483741bb18b8",
   "lastOpenFiles": [
-    "VAE notes.md",
-    "Todos.md",
     "notes.synctex(busy)",
-    "pdflatex97817.fls",
-    "Robot setups to build.md",
-    "pdflatex95848.fls",
-    "pdflatex95732.fls",
-    "pdflatex95718.fls",
-    "pdflatex95714.fls",
-    "pdflatex94938.fls",
+    "pdflatex54908.fls",
+    "pdflatex54721.fls",
+    "pdflatex54716.fls",
+    "pdflatex54561.fls",
     "notes.blg",
-    "pdflatex94934.fls",
+    "pdflatex54557.fls",
+    "notes.fdb_latexmk",
     "notes.toc",
+    "notes.out",
+    "notes.aux",
+    "Todos.md",
+    "VAE notes.md",
+    "Robot setups to build.md",
     "diagrams/mode collapse figure.png",
     "diagrams/rotary link env modes.png",
     "diagrams/rotary link env  pic drawing.png"
