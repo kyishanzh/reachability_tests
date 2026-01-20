@@ -136,7 +136,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
     epochs: int = 60
     seed: int = 0
     lr: float = 5e-4
-    lr_milestones: List[int] = field(default_factory=[20, 40])
+    lr_milestones: List[int] = field(default_factory=lambda: [20, 40])
     lr_gamma: float = 0.1
     batch_size: int = 256 # mnist cINN example also uses this batch size
     grad_clip: float = 10.

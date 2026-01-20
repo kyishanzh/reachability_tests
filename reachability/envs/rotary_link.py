@@ -204,6 +204,8 @@ class RotaryLinkEnv:
         ax.set_ylabel("Y (Global)")
         ax.set_title(f"RotaryLinkEnv: ψ={np.degrees(psi):.1f}°, θ1={np.degrees(th1):.1f}°, θ2={np.degrees(th2):.1f}°")
         ax.legend(loc='upper right', fontsize='small')
+        for spine in ax.spines.values():
+            spine.set_visible(False)
 
         if save:
             fig.savefig(save_path, dpi=200, bbox_inches="tight")

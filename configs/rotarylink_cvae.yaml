@@ -15,8 +15,8 @@ env:
     hy_max:  2.0
 
 data:
-  n_train: 20000 # was 20000
-  n_test:  2000
+  n_train: 100000 # was 20000
+  n_test:  10000
 
 model:
   name: "cvae"
@@ -29,7 +29,7 @@ model:
   lr: 0.001
   lambda_fk: 0.5
   batch_size: 256
-  epochs: 50
+  epochs: 200
   beta: 1.0
   device: "cpu" # set "cuda" if available
 
@@ -37,7 +37,7 @@ features:
   basexy_norm_type: "standardize"
   add_fourier_feat: false
   fourier_feat_scale: 10
-  fourier_mapping_size: 64
+  fourier_mapping_size: 4
 
 eval:
   n_samples_per_H: 200
@@ -45,4 +45,3 @@ eval:
   eps_hist: 1.0e-9
   sampling_temperature: 0
 
-notes: "trying some optimizations together: 500 epochs, n_train = 100000, linear schedule for beta, resMLP with 5 residual blocks"
