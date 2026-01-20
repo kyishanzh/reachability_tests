@@ -107,7 +107,7 @@ def main():
         # wandb
         wandb_run=run
     )
-    model.fit(train_loader=train_loader, val_loader=val_loader, val_frequency=50)
+    model.fit(train_loader=train_loader, val_loader=val_loader, val_frequency=10)
 
     # save model
     if args.save:
