@@ -1,0 +1,41 @@
+data:
+  n_test: 10000
+  n_train: 100000
+env:
+  base_heading_stddev: 0.2617993878
+  base_pos_eps: 0.3
+  joint_limits: None
+  link_lengths:
+  - 0.8
+  - 1.0
+  n_links: 2
+  type: RotaryLink
+  workspace:
+    hx_max: 2.0
+    hx_min: -2.0
+    hy_max: 2.0
+    hy_min: -2.0
+eval:
+  eps_hist: 1.0e-09
+  n_bins_theta: 72
+  n_samples_per_h: 200
+  sampling_temperature: 0
+features:
+  add_fourier_feat: false
+  basexy_norm_type: relative
+  fourier_feat_scale: 10
+  fourier_mapping_size: 4
+model:
+  batch_size: 256
+  beta: 1.0
+  device: cpu
+  epochs: 200
+  hidden_dim: 512
+  lambda_fk: 0.5
+  lr: 0.001
+  name: cvae
+  num_blocks: 5
+  type: resMLP
+  z_dim: 6
+project_name: rotarylink_cvae
+seed: 0

@@ -1,0 +1,32 @@
+seed: 0
+
+env:
+  type: "Simple"
+  L: 1.0
+  workspace:
+    hx_min: -2.0
+    hx_max:  2.0
+    hy_min: -2.0
+    hy_max:  2.0
+
+data:
+  n_train: 20000
+  n_test:  2000
+
+model:
+  name: "cvae"
+  z_dim: 4
+  enc_hidden: [128, 128]
+  dec_hidden: [128, 128]
+  lr: 0.001
+  lambda_fk: 1.0
+  batch_size: 256
+  epochs: 60
+  beta: 1.0
+  device: "cpu" # set "cuda" if available
+
+eval:
+  n_samples_per_h: 200
+  n_bins_theta: 72
+  eps_hist: 1.0e-9
+  sampling_temperature: 0

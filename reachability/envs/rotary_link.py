@@ -10,9 +10,9 @@ from reachability.utils.utils import wrap_to_2pi
 class RotaryLinkEnv:
     """
     Simple robot setup:
-        Q = (x, y, psi, theta1, theta2) = (base pos, link orientation)
-        H = (hx, hy)
-        FK: hand(Q) = [x, y] + R(psi)*[L1*cos(theta1) + L2*cos(theta1 + theta2), L1*sin(theta1) + L2*sin(theta1 + theta2)]
+        q = (x, y, psi, theta1, theta2) = (base pos, link orientation)
+        h = (hx, hy)
+        FK: hand(q) = [x, y] + R(psi)*[L1*cos(theta1) + L2*cos(theta1 + theta2), L1*sin(theta1) + L2*sin(theta1 + theta2)]
     """
     workspace: Workspace2D
     link_lengths: np.ndarray  # e.g. np.array([L1, L2]) for 2-link robot
@@ -23,25 +23,28 @@ class RotaryLinkEnv:
     name: str = "RotaryLink"
 
     @property
-    def dH(self) -> int:
+    def d_h(self) -> int:
         return 2
 
     @property
-    def dQ(self) -> int:
+    def d_q(self) -> int:
         return 5
 
-    def sample_H(self, n: int, rng: np.random.Generator) -> np.ndarray:
+    def get_robot_scale(self):
+        return np.sum(self.link_lengths)
+
+    def sample_h(self, n: int, rng: np.random.Generator) -> np.ndarray:
         """Sample target H within defined workspace bounds"""
         hx = rng.uniform(self.workspace.hx_min, self.workspace.hx_max, size=(n,1))
         hy = rng.uniform(self.workspace.hy_min, self.workspace.hy_max, size=(n,1))
         return np.concatenate([hx, hy], axis=1).astype(np.float32)  #[n, 2]
 
-    def sample_Q_given_H_uniform(self, H: np.ndarray, rng: np.random.Generator):
+    def sample_q_given_h_uniform(self, h_world: np.ndarray, rng: np.random.Generator):
         """Sample Q from the ground-truth conditional given H (shape = n samples x 2), assuming H has a uniform prior across the workspace."""
-        n = H.shape[0]
+        n = h_world.shape[0]
         L1, L2 = self.link_lengths[0], self.link_lengths[1]            
-        hx = H[:, 0:1] # col 0
-        hy = H[:, 1:2] # col 1
+        hx = h_world[:, 0:1] # col 0
+        hy = h_world[:, 1:2] # col 1
 
         # sample base position (x,y) via the "donut" of feasible spots
         r_min = np.fabs(L1 - L2)
@@ -103,27 +106,27 @@ class RotaryLinkEnv:
             th1_filtered = filter_and_keep_dims(th1, valid_mask)
             th2_filtered = filter_and_keep_dims(th2, valid_mask)
 
-            Q = np.concatenate([
+            q_world = np.concatenate([
                 x_filtered, y_filtered, wrap_to_2pi(psi_filtered), wrap_to_2pi(th1_filtered), wrap_to_2pi(th2_filtered)
             ], axis=1).astype(np.float32)
         else:
-            Q = np.concatenate([x, y, wrap_to_2pi(psi), wrap_to_2pi(th1), wrap_to_2pi(th2)], axis=1).astype(np.float32)
-        return Q
+            q_world = np.concatenate([x, y, wrap_to_2pi(psi), wrap_to_2pi(th1), wrap_to_2pi(th2)], axis=1).astype(np.float32)
+        return q_world
 
-    def fk_hand(self, Q: np.ndarray) -> np.ndarray:
+    def fk_hand(self, q_world: np.ndarray) -> np.ndarray:
         """Returns hand position f(Q) given Q (Q shape = n samples x 5)"""
         # print("Q = ", Q)
-        single = (Q.ndim == 1)
+        single = (q_world.ndim == 1)
         if single:
-            Q = Q.reshape(1, -1)
+            q_world = q_world.reshape(1, -1)
             # print("reshaped Q = ", Q)
         
         # 1. extract states
-        b_x = Q[:, 0:1]
-        b_y = Q[:, 1:2]
-        psi = Q[:, 2:3]
-        th1 = Q[:, 3:4]
-        th2 = Q[:, 4:5]
+        b_x = q_world[:, 0:1]
+        b_y = q_world[:, 1:2]
+        psi = q_world[:, 2:3]
+        th1 = q_world[:, 3:4]
+        th2 = q_world[:, 4:5]
 
         L1, L2 = self.link_lengths[0], self.link_lengths[1]
 
@@ -139,11 +142,11 @@ class RotaryLinkEnv:
         # print("hand = ", hand)
         return hand
 
-    def plot(self, one_Q: np.ndarray, one_H: np.ndarray, save=False, save_path=""):
+    def plot(self, one_q_world: np.ndarray, one_h_world: np.ndarray, save=False, save_path=""):
         """Visualize the mobile base + 2-link arm for a single configuration Q and target H"""
         # 1. extract Q components: [x, y, psi, th1, th2]
-        bx, by, psi = float(one_Q[0]), float(one_Q[1]), float(one_Q[2])
-        th1, th2 = float(one_Q[3]), float(one_Q[4])
+        bx, by, psi = float(one_q_world[0]), float(one_q_world[1]), float(one_q_world[2])
+        th1, th2 = float(one_q_world[3]), float(one_q_world[4])
         
         L1, L2 = self.link_lengths[0], self.link_lengths[1]
         
@@ -156,7 +159,7 @@ class RotaryLinkEnv:
         ey = by + np.sin(psi) * el_lx + np.cos(psi) * el_ly
         
         # global hand position (using your FK function)
-        hx_fk, hy_fk = self.fk_hand(one_Q).flatten()
+        hx_fk, hy_fk = self.fk_hand(one_q_world).flatten()
 
         fig, ax = plt.subplots(figsize=(8, 8))
 
@@ -184,7 +187,7 @@ class RotaryLinkEnv:
         ax.scatter([hx_fk], [hy_fk], marker="x", color='green', s=100, label="Hand (FK)")
 
         # target
-        one_H = one_H.flatten()
+        one_H = one_h_world.flatten()
         hx_target, hy_target = float(one_H[0]), float(one_H[1])
         ax.scatter([hx_target], [hy_target], marker="*", color='gold', s=200, label="Target", alpha=0.8)
         
@@ -213,13 +216,13 @@ class RotaryLinkEnv:
         return ax
 
     @staticmethod
-    def target_bearing_world(Q: np.ndarray, H: np.ndarray) -> np.ndarray:
+    def target_bearing_world(q_world: np.ndarray, h_world: np.ndarray) -> np.ndarray:
         """World-frame bearing angle from base position (x, y) to target H.
         -> Returns the 'implied' base heading psi that points directly 
         from the base (x, y) to the target (hx, hy).
         """
-        hx, hy = H[:, 0], H[:, 1]
-        bx, by = Q[:, 0], Q[:, 1]
+        hx, hy = h_world[:, 0], h_world[:, 1]
+        bx, by = q_world[:, 0], q_world[:, 1]
         psi_implied = np.arctan2(hy - by, hx - bx)
         # print(psi_implied)
         psi_implied = wrap_to_2pi(psi_implied)

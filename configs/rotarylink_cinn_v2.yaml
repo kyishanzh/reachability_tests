@@ -23,7 +23,7 @@ model:
   hidden_dim: 512
   num_blocks: 16
   clamp: 1.0
-  basexy_norm_type: "standardize"
+  basexy_norm_type: "relative"
 
   # training
   device: "cpu"
@@ -38,7 +38,7 @@ model:
   lambda_fk: 0
 
 eval:
-  n_samples_per_H: 200
+  n_samples_per_h: 200
   n_bins_theta: 72
   eps_hist: 1.0e-9
   sampling_temperature: 0

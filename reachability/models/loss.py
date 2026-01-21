@@ -1,19 +1,19 @@
 import torch
-from reachability.utils.utils import revert_bounded_to_worldscale, revert_standardized_to_worldscale
+from reachability.utils.utils import revert_relative_to_worldscale
 
-def normalize_to_unit_circle(c, s, eps):
-    r = torch.sqrt(c * c + s * s + eps)
-    return c/r, s/r
+def normalize_to_unit_circle(cos, sin, eps):
+    r = torch.sqrt(cos * cos + sin * sin + eps)
+    return cos/r, sin/r
 
-def fk_mse_from_qfeat_wrapper(env, mu_q: torch.Tensor, H: torch.Tensor, eps: float=1e-6, basexy_norm_type: str = "bound") -> torch.Tensor:
+def fk_mse_from_qfeat_wrapper(env, mu_q: torch.Tensor, h_world: torch.Tensor, eps: float=1e-6, basexy_norm_type: str = "relative") -> torch.Tensor:
     if env.name == 'Simple':
-        return fk_mse_from_qfeat_simple(env, mu_q, H, eps, basexy_norm_type=basexy_norm_type)
+        return fk_mse_from_qfeat_simple(env, mu_q, h_world, eps, basexy_norm_type=basexy_norm_type)
     elif env.name == 'RotaryLink':
-        return fk_mse_from_qfeat_rotary(env, mu_q, H, eps, basexy_norm_type=basexy_norm_type)
+        return fk_mse_from_qfeat_rotary(env, mu_q, h_world, eps, basexy_norm_type=basexy_norm_type)
     else:
         raise ValueError(f"Unknown environment type: {env.name}")
 
-def fk_mse_from_qfeat_simple(env, mu_q: torch.Tensor, H: torch.Tensor, eps: float=1e-8, basexy_norm_type: str = "bound") -> torch.Tensor:
+def fk_mse_from_qfeat_simple(env, mu_q: torch.Tensor, h_world: torch.Tensor, eps: float=1e-8, basexy_norm_type: str = "relative") -> torch.Tensor:
     """
     mu_q: [B, 4] = (normalized x in [-1, 1], normalized y in [-1, 1], cos(theta), sin(theta))  (decoder mean)
     H: [B, 2] = (hx, hy) in world coordinates
@@ -22,36 +22,34 @@ def fk_mse_from_qfeat_simple(env, mu_q: torch.Tensor, H: torch.Tensor, eps: floa
     L = env.L
     x = mu_q[:, 0]
     y = mu_q[:, 1]
-    if basexy_norm_type == "bound":
-        x_reverted, y_reverted = revert_bounded_to_worldscale(env, x, y)
-    elif basexy_norm_type == "standardize":
-        x_reverted, y_reverted = revert_standardized_to_worldscale(env, x, y)
-    else:
-        raise ValueError(f"Unknown robot base (x,y) normalization method: {basexy_norm_type}")
-    c = mu_q[:, 2]
-    s = mu_q[:, 3]
+    if basexy_norm_type == "relative":
+        x_reverted = revert_relative_to_worldscale(env, x, h_world[:, 0])
+        y_reverted = revert_relative_to_worldscale(env, y, h_world[:, 1])
+    else: # add additional transformations in the future here
+        raise RuntimeError(f"Only basexy_norm_type = relative supported right now, unknown mode {basexy_norm_type} was provided.")
+    cos_theta = mu_q[:, 2]
+    sin_theta = mu_q[:, 3]
 
     # normalize c, s onto the unit circle - force the model to only encode orientation with c, s features
-    c, s = normalize_to_unit_circle(c, s, eps)
+    cos_theta, sin_theta = normalize_to_unit_circle(cos_theta, sin_theta, eps)
 
-    hx_pred = x_reverted + L * c
-    hy_pred = y_reverted + L * s
+    hx_pred = x_reverted + L * cos_theta
+    hy_pred = y_reverted + L * sin_theta
 
-    return (hx_pred - H[:, 0]) ** 2 + (hy_pred - H[:, 1]) ** 2
+    return (hx_pred - h_world[:, 0]) ** 2 + (hy_pred - h_world[:, 1]) ** 2
 
-def fk_mse_from_qfeat_rotary(env, mu_q: torch.Tensor, H: torch.Tensor, eps: float=1e-8, basexy_norm_type: str = "bound") -> torch.Tensor:
+def fk_mse_from_qfeat_rotary(env, mu_q: torch.Tensor, h_world: torch.Tensor, eps: float=1e-8, basexy_norm_type: str = "relative") -> torch.Tensor:
     """
     mu_q: [B, 8] = (normalized x in [-1, 1], normalized y in [-1, 1], cos(psi), sin(psi), cos(theta1), sin(theta1), cos(theta2), sin(theta2))
     H: [B, 2] = (hx, hy) in world coordinates!
     """
     x = mu_q[:, 0]
     y = mu_q[:, 1]
-    if basexy_norm_type == "bound":
-        x_reverted, y_reverted = revert_bounded_to_worldscale(env, x, y)
-    elif basexy_norm_type == "standardize":
-        x_reverted, y_reverted = revert_standardized_to_worldscale(env, x, y)
-    else:
-        raise ValueError(f"Unknown robot base (x,y) normalization method: {basexy_norm_type}")
+    if basexy_norm_type == "relative":
+        x_reverted = revert_relative_to_worldscale(env, x, h_world[:, 0])
+        y_reverted = revert_relative_to_worldscale(env, y, h_world[:, 1])
+    else: # add additional transformations in the future here
+        raise RuntimeError(f"Only basexy_norm_type = relative supported right now, unknown mode {basexy_norm_type} was provided.")
 
     # normalize c, s onto the unit circle - force the model to only encode orientation with c, s features -> do for all angles
     c_psi, s_psi = normalize_to_unit_circle(mu_q[:, 2], mu_q[:, 3], eps)
@@ -72,4 +70,4 @@ def fk_mse_from_qfeat_rotary(env, mu_q: torch.Tensor, H: torch.Tensor, eps: floa
     hx_pred = x_reverted + c_psi * local_x - s_psi * local_y
     hy_pred = y_reverted + s_psi * local_x + c_psi * local_y
 
-    return (hx_pred - H[:, 0]) ** 2 + (hy_pred - H[:, 1]) ** 2 # MSE
+    return (hx_pred - h_world[:, 0]) ** 2 + (hy_pred - h_world[:, 1]) ** 2 # MSE

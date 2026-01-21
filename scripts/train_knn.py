@@ -52,13 +52,13 @@ def main():
     train_ds = Dataset.generate(env=env, n=n_train, rng=rng)
     test_ds = Dataset.generate(env=env, n=n_test, rng=rng)
 
-    H_train, Q_train = train_ds.H_raw, train_ds.Q_raw
-    H_test = test_ds.H_raw
+    h_train, q_train = train_ds.h_world, train_ds.q_world
+    h_test = test_ds.h_world
 
     # eval config
     ecfg = cfg["eval"]
     eval_cfg = EvalConfig(
-        n_samples_per_H=int(ecfg["n_samples_per_H"]),
+        n_samples_per_h=int(ecfg["n_samples_per_h"]),
         n_bins_theta = int(ecfg["n_bins_theta"]),
         eps_hist=float(ecfg["eps_hist"])
     )
@@ -70,8 +70,8 @@ def main():
         metric=str(mcfg.get("metric", "euclidean")),
         algorithm=str(mcfg.get("algorithm", "auto"))
     )
-    nn_model.fit(H_train=H_train, Q_train=Q_train)
-    nn_results = evaluate_model(env=env, model=nn_model, H_test=H_test, cfg=eval_cfg, rng=rng)
+    nn_model.fit(h_train=h_train, q_train=q_train)
+    nn_results = evaluate_model(env=env, model=nn_model, h_world_test=h_test, c_world_test=h_test, cfg=eval_cfg, rng=rng)
     print_results("NNDeterministicLookup", nn_results)
 
     if args.save:
@@ -89,8 +89,8 @@ def main():
         metric=str(mcfg.get("metric", "euclidean")),
         algorithm=str(mcfg.get("algorithm", "auto"))
     )
-    knn_model.fit(H_train=H_train, Q_train=Q_train)
-    knn_results = evaluate_model(env=env, model=knn_model, H_test=H_test, cfg=eval_cfg, rng=rng)
+    knn_model.fit(h_train=h_train, q_train=q_train)
+    knn_results = evaluate_model(env=env, model=knn_model, h_world_test=h_test, c_world_test=h_test, cfg=eval_cfg, rng=rng)
     print_results("KNNConditionalSampler", knn_results)
 
 if __name__ == "__main__":

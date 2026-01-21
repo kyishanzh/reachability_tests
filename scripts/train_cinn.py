@@ -64,14 +64,14 @@ def main():
     train_ds, val_ds = train_full_ds.split(split_ratio=0.9, rng=rng)
     test_ds = Dataset.generate(env=env, n=n_test, rng=rng)
 
-    H_test = test_ds.H_raw
+    h_world_test = test_ds.h_world
 
     # model config
     mcfg = cfg["model"]
     device = str(mcfg.get("device", "cpu"))
     
     # data preprocessing
-    basexy_norm_type = mcfg.get("basexy_norm_type", "standardize")
+    basexy_norm_type = mcfg.get("basexy_norm_type", "relative")
     train_ds.preprocess(basexy_norm_type=basexy_norm_type)
     train_ds.to(device)
     val_ds.preprocess(basexy_norm_type=basexy_norm_type)
@@ -87,12 +87,12 @@ def main():
         env=env,
         # model
         hidden_dim=int(mcfg["hidden_dim"]),
-        dQ=train_full_ds.dQ,
-        dQ_feat=train_loader.dataset.dQ_feat,
-        dCond=train_loader.dataset.dH,
+        d_q=train_full_ds.d_q,
+        d_q_feat=train_loader.dataset.d_q_feat,
+        d_c_feat=train_loader.dataset.d_c_feat,
         num_blocks=int(mcfg["num_blocks"]),
         clamp=float(mcfg.get("clamp", 1.0)),
-        basexy_norm_type=mcfg.get("basexy_norm_type", "standardize"),
+        basexy_norm_type=basexy_norm_type,
         # training
         device=device,
         epochs=int(mcfg["epochs"]),
@@ -121,13 +121,13 @@ def main():
     # eval config
     ecfg = cfg["eval"]
     eval_cfg = EvalConfig(
-        n_samples_per_H=int(ecfg["n_samples_per_H"]),
+        n_samples_per_h=int(ecfg["n_samples_per_h"]),
         n_bins_theta = int(ecfg["n_bins_theta"]),
         eps_hist=float(ecfg["eps_hist"])
     )
 
     # eval
-    results = evaluate_model(env=env, model=model, H_test=H_test, cfg=eval_cfg, rng=rng)
+    results = evaluate_model(env=env, model=model, h_world_test=h_world_test, c_world_test=h_world_test, cfg=eval_cfg, rng=rng) #TODO: condition on actual information later
     print_results("CINN", results)
 
     theta_values = results.pop("eval/theta_values", None)

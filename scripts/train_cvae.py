@@ -1,5 +1,5 @@
 # running from root (reachability_tests/): python -m scripts.train_cvae --config configs/simple_cvae.yaml --wandb
-# to save trained model, add tags --save --save_path "outputs/model_ckpts/cvae/cvae_rotary_1152026.pt" (etc.)
+# to save trained model, add tags --save --save_path "outputs/model_ckpts/cvae/cvae_rotarylink_relative.pt" (etc.)
 from __future__ import annotations
 
 import torch
@@ -67,7 +67,7 @@ def main():
     train_ds, val_ds = train_full_ds.split(split_ratio=0.9, rng=rng)
     test_ds = Dataset.generate(env=env, n=n_test, rng=rng)
 
-    H_test = test_ds.H_raw
+    h_world_test = test_ds.h_world
 
     # model config
     mcfg = cfg["model"]
@@ -80,7 +80,7 @@ def main():
 
     # data preprocessing
     ftcfg = cfg["features"]
-    basexy_norm_type = ftcfg.get("basexy_norm_type", "bound")
+    basexy_norm_type = ftcfg.get("basexy_norm_type", "relative")
     add_fourier_feat = bool(ftcfg.get("add_fourier_feat", False))
     fourier_feat_scale = float(ftcfg.get("fourier_feat_scale", 10))
     fourier_mapping_size = int(ftcfg.get("fourier_mapping_size", 256))
@@ -101,7 +101,9 @@ def main():
     # model
     model = CVAEConditionalSampler(
         env=env,
-        dQ=train_ds.dQ,
+        d_q=train_full_ds.d_q,
+        d_q_feat=train_loader.dataset.d_q_feat,
+        d_c_feat=train_loader.dataset.d_c_feat,
         z_dim=int(mcfg["z_dim"]),
         hidden_dim=int(mcfg["hidden_dim"]),
         num_blocks=int(mcfg["num_blocks"]),
@@ -133,14 +135,14 @@ def main():
     # eval config
     ecfg = cfg["eval"]
     eval_cfg = EvalConfig(
-        n_samples_per_H=int(ecfg["n_samples_per_H"]),
+        n_samples_per_h=int(ecfg["n_samples_per_h"]),
         n_bins_theta = int(ecfg["n_bins_theta"]),
         eps_hist=float(ecfg["eps_hist"]),
         sampling_temperature=float(ecfg["sampling_temperature"])
     )
 
     # eval
-    results = evaluate_model(env=env, model=model, H_test=H_test, cfg=eval_cfg, rng=rng)
+    results = evaluate_model(env=env, model=model, h_world_test=h_world_test, c_world_test=h_world_test, cfg=eval_cfg, rng=rng) #TODO: condition on actual information later
     print_results("CVAE", results)
 
     theta_values = results.pop("eval/theta_values", None)

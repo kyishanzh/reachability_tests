@@ -127,12 +127,12 @@ Our target is to model some distribution $p(b, q\mid x_e)$ subject to these cons
     \end{itemize}
     \item \colorbox{cyan!20}{Featurization:} defining $R = L_1 + L_2$ (robot reach),
     \[Q = (x, y, \psi, \theta_1, \theta_2)  \mapsto \boxed{Q_{\text{feat}} = \left(\frac{x - h_x}{R}, \frac{y - h_y}{R}, \cos(\psi), \sin(\psi), \cos(\theta_1), \sin(\theta_1), \cos(\theta_2), \sin(\theta_2)\right)}\]
-    \[H = (h_x, h_y) \mapsto \boxed{C = (0, 0)} \]
+    \[H = (h_x, h_y), C = (\ldots) \mapsto \boxed{C_\text{feat} = (0, 0)} \]
     The feature vector $H_{\text{feat}}$ is no longer necessary because $H$ has been encoded into our featurization for $(x,y)$ in $Q_{\text{feat}}$, but we keep it around in the code with \texttt{dCond = 0} in case we want to add conditioning features later (e.g., conditioning on pictures of the environment, obstacles, terrain, etc.).
     \item \colorbox{violet!15}{Model learning setup:}
     \begin{itemize}
-        \item Input: $Q_{\text{feat}}$ (+ empty conditioning vector $C$ )
-        \item Goal: Model learns distribution $p(Q_\text{feat} \mid C)$ that maximizes the predicted probability of seeing the ground truth data distribution $(Q_{\text{feat}}, C)$ pairs.
+        \item Input: $Q_{\text{feat}}$ (+ empty conditioning vector $C_\text{feat}$ )
+        \item Goal: Model learns distribution $\boxed{p(Q_\text{feat} \mid C_\text{feat})}$ that maximizes the predicted probability of seeing the ground truth data distribution $(Q_{\text{feat}}, C_\text{feat})$ pairs.
     \end{itemize}
     \item Things that the model should generalize across:
     \begin{itemize}
@@ -140,9 +140,35 @@ Our target is to model some distribution $p(b, q\mid x_e)$ subject to these cons
     \end{itemize}
     \item Things that the model will not be capable of generalizing across:
     \begin{itemize}
-        \item 
+        \item Hardware parameters:
+        \begin{itemize}
+            \item Link lengths (\texttt{link\_lengths})
+            \item Joint limits (\texttt{joint\_limits})
+            \item Number of links in robot arm (\texttt{n\_links})
+        \end{itemize}
+        \item Tolerance parameters:
+        \begin{itemize}
+            \item \texttt{base\_pos\_eps} (this is the $\epsilon$ for how thin/thick the donut of allowed base positions is)
+            \item \texttt{base\_heading\_stddev} (large value means the robot can be loosely facing the target, small value means the robot should near exactly face the target)
+        \end{itemize}
     \end{itemize}
 \end{itemize}
+
+\subsubsection{Code setup}
+The goal is to learn a model for $p(Q_{\text{feat}} \mid C_{\text{feat}})$, where $C_\text{feat}$ encapsulates the featurized form of all information we want to condition on. 
+\begin{table}[h]
+    \begin{tabular}{|c|c|c|}
+        \hline
+        \textbf{Name} & \textbf{Description} & \textbf{Code}: name; dimension \\ \hline
+        $Q$ & Complete robot configuration (base position, arm configuration) $\in \mathbb{R}^5$ & \texttt{q\_world}; \texttt{d\_q} \\ \hline
+        $Q_{\text{feat}}$ & Featurized robot configuration [input to models] $\in \mathbb{R}^8$ & \texttt{q\_feat}; \texttt{d\_q\_feat}\\ \hline
+        $H$ & Target robot hand poses $H$ corresponding to $Q$ [input to models] $\in \mathbb{R}^8$ & \texttt{h\_world}; \texttt{d\_h}\\ \hline
+        $C$ & Raw values for conditioning variables (robot end-effector target pose $H$) $\in \mathbb{R}^2$ & \texttt{c\_world}; \texttt{d\_c}\\ \hline
+        $C_{\text{feat}}$ & Featurized conditioning information [input to models] $= [0, 0] \in \mathbb{R}^2$ & \texttt{c\_feat}; \texttt{d\_c\_feat}\\ \hline
+        $\hat{Q}$ & Given $H$, sampling some matching $\hat{Q}$ from the learned model $p(Q_{\text{feat}} \mid C_{\text{feat}})$ & \texttt{q\_sample} or \texttt{q\_hat}\\ \hline
+    \end{tabular}
+    \caption{Unified notation}
+\end{table}
 
 \subsection{Featurization}
     \[Q = (x, y, \psi, \theta_1, \theta_2)  \mapsto Q_{\text{feat}} = \left(\frac{x - h_x}{R}, \frac{y - h_y}{R}, \cos(\psi), \sin(\psi), \cos(\theta_1), \sin(\theta_1), \cos(\theta_2), \sin(\theta_2)\right)\]
@@ -203,6 +229,8 @@ Read more on this!
     \item \href{https://research.google/blog/rearranging-the-visual-world/}{Transporter networks} (solve robotic manipulation by learning a ``kernel'' of the object in a canonical frame and then sliding it across the image (convolution) to find a match)
     \item Residual policy learning (often learns a delta-action in a local frame rather than absolute actions)
 \end{itemize}
+
+\subsection{Training} Refer to section \ref{v2.0 training}.
 
 
 \section{Simplified problem v2.0: Round thing with a rotary 2-link arm} \label{v2.0}
@@ -316,7 +344,7 @@ Let us walk through what the model is learning in this situation:
 
 Input to function: \texttt{mu\_q} ($\mu_q$ = model's prediction of the robot's state) and $H$. We want to take this prediction, convert it into a valid physical configuration, calculate where the arms' tip should be in the world and compare that to a target position $H$. \textcolor{red}{Write out nicely later.}
 
-\subsection{Training}
+\subsection{Training} \label{v2.0 training}
 
 \subsubsection{Nearest neighbors baseline} 
 
@@ -402,13 +430,74 @@ stochasticity/var\_Q\_fixed\_H    0.000000}
 \end{itemize}
 
 
-\subsubsection{Conditional INN} \textbf{Metrics to track:}
+\subsubsection{Conditional INN} cINNs are trained using MLE: we want to maximize the probability of the data point $x$ given condition $c$. By using the change of variables formula, the log-likelihood is:
+$$\log p_X (x \mid c) = \log p_Z(z) + \log |\det J|$$
+where:
 \begin{itemize}
-    \item FILL IN
+    \item $z = f(x; c)$ is the latent vector mapped to by the model
+    \item $p_Z(z)$ is the base distribution (usually a standard Normal $\mathcal{N}(0, I)$)
+    \item $\log |\det J|$ is the log-determinant of the Jacobian (measuring how much the network expands/contracts volume)
+\end{itemize}
+
+Since we minimize NLL, the loss function is:
+\[\mathcal{L} = \underbrace{- \log p_Z(z)}_{\text{z\_term}} + \underbrace{(- \log |\det J|)}_{\text{logdet\_term}}\]
+
+\textbf{Metrics to track:}
+\begin{itemize}
+    \item Loss components (Track: \texttt{z\_term}, \texttt{logdet\_term}):
+    \begin{itemize}
+        \item \texttt{z\_term} is minimal when $p_Z(z) = 1$, i.e. $z = \mu(p_Z)$ (fit the mean of the prior Gaussian)
+        \item \texttt{logdet\_term} prevents the model from collapsing all data to a single point: it force the model to maintain volume \textcolor{cyan}{(read into the math behind this more)}
+        \begin{itemize}
+            \item Watch for: if \texttt{logdet\_term} becomes extremely negative (e.g. $-10^6$) while \texttt{z\_term} becomes massive, the model is expanding volume infinitely to ``cheat'' the loss.
+        \end{itemize}
+    \end{itemize}
+    \item Latent statistics (Track: \texttt{z\_sq\_mean}, \texttt{z\_norm\_mean})
+    \begin{itemize}
+        \item We are forcing $z$ to look like $\mathcal{N}(0, 1)$, so in theory, we know exactly what the statistics of $z$ should be: 
+        \begin{itemize}
+            \item \texttt{z\_sq\_mean}: since the variance of a standard normal is 1, this value should converge to roughly 1.0
+            \item \texttt{z\_norm\_mean}: if this explodes (e.g., $>100$), the model is mapping some inputs to very extreme regions (since supposedly $z \sim \mathcal{N}(0, 1)$), indicating instability or outliers in the training data.
+        \end{itemize}
+    \end{itemize}
+    \item Jacobian statistics (Track: \texttt{log\_detj\_std}, \texttt{log\_detj\_min/max})
+    \begin{itemize}
+        \item This measures the ``stiffness'' of the transformation \textcolor{cyan}{(read into the theory behind this more)}
+        \begin{itemize}
+            \item \texttt{log\_detj\_std}: if this is very high, the network is reacting very differently to different samples in the batch $\rightarrow$ this suggests the training surface is rugged or the batch size is too small. 
+            \item \texttt{log\_detj\_min/max}: spikes here often precede \texttt{NaN} errors
+        \end{itemize}
+    \end{itemize}
+
+    \item Gradient norms (Track: \texttt{grad\_norm\_prev\_clip}, \texttt{grad\_norm\_post\_clip})
+    \begin{itemize}
+        \item Measures how big the update steps are!
+        \item Health check: \texttt{grad\_norm\_prev\_clip} should eventually settle down $\rightarrow$ if it consistently hits your clip value (causing \texttt{post\_clip} to be capped), the learning rate is likely too high
+    \end{itemize}
+    \item Validation NLL:
+    \begin{itemize}
+        \item In theory, cINNs can memorize the training data and achieve arbitrarily low NLL by shrinking the volume around training points. 
+        \item Track this using a held-out validation set during training: if train NLL keeps dropping but val NLL plateaus/rises, stop training!
+    \end{itemize}
+
+    \item \textcolor{blue}{To add:}
+    \begin{itemize}
+        \item Reconstruction error (invertibility check): in theory, cINNs are strictly invertible. Ensure that $x \approx f^{-1}(f(x))$: if this error is high, the ``generative'' capabilities of the INN are broken, even if NLL is low. 
+        \begin{lstlisting}
+with torch.no_grad():
+    z = model(x, c)
+    x_recon, _ = model.reverse(z, c) # Assuming reverse method exists
+    recon_error = torch.mean((x - x_recon)**2)
+    # Log "train/recon_mse": recon_error.item()
+        \end{lstlisting}
+        \item Latent mean: We track \texttt{z} variance, but even if the model learns a variance of 1.0, if it centers the cloud at $z = 50$, this is still a failure mode $\rightarrow$ the mean of \texttt{z} should be 0: track \texttt{"train/z\_mean": z.mean().item()} and ensure that it hovers around 0
+    \end{itemize}
 \end{itemize}
 
 
 \subsection{Additional notes}
+
+\textcolor{red}{\textbf{Featurization section below is now deprecated}, featurizing this way causes the model to depend on workspace size.}
 
 \subsubsection{Featurization} \label{v2.0 featurization}
 We featurize data $Q = (x, y, \psi, \theta_1, \theta_2) \in \mathbb{R}^5$ as:
@@ -430,8 +519,7 @@ We also featurize $H = (h_x, h_y) \mapsto H_{\text{feat}} = (h_{x, \text{norm}},
     \end{itemize}
 \end{enumerate}
 
-Empirically, we observe that method 2 (standardization) leads to much better cINN training performance (\texttt{hand\_err\_mean} of 0.28 vs. 0.062 when all other training conditions are held constant), whilst both lead to similar cVAE performance. Some theories as to why the cINN approach greatly prefers method 2 for base position normalization: \textcolor{red}{Look into / think about later.}
-
+Empirically, we observe that method 2 (standardization) leads to much better cINN training performance (\texttt{hand\_err\_mean} of 0.28 vs. 0.062 when all other training conditions are held constant), whilst both lead to similar cVAE performance. Some theories as to why the cINN approach greatly prefers method 2 for base position normalization.
 
 \section{Simplified problem v1: Round thing with a fixed stick}
 

@@ -25,43 +25,43 @@ class SimpleEnv:
     name: str = "Simple"
 
     @property
-    def dH(self) -> int:
+    def d_h_world(self) -> int:
         return 2
 
     @property
-    def dQ(self) -> int:
+    def d_q_world(self) -> int:
         return 3
 
-    def sample_H(self, n: int, rng: np.random.Generator) -> np.ndarray:
+    def sample_h(self, n: int, rng: np.random.Generator) -> np.ndarray:
         """Sample target H within defined workspace bounds"""
         hx = rng.uniform(self.workspace.hx_min, self.workspace.hx_max, size=(n,1))
         hy = rng.uniform(self.workspace.hy_min, self.workspace.hy_max, size=(n,1))
         return np.concatenate([hx, hy], axis=1).astype(np.float32)  #[n, 2]
 
-    def sample_Q_given_H_uniform(self, H: np.ndarray, rng: np.random.Generator):
+    def sample_q_given_h_uniform(self, h_world: np.ndarray, rng: np.random.Generator):
         """Sample Q from the ground-truth conditional given H (shape = n samples x 2):
         theta ~ Uniform[0, 2pi)
         x = hx - Lcos(theta)
         y = hy - Lsin(theta)"""
-        n = H.shape[0]
+        n = h_world.shape[0]
         theta = rng.uniform(0, 2.0 * np.pi, size=(n, 1)).astype(np.float32)
-        hx = H[:, 0:1] # col 0
-        hy = H[:, 1:2] # col 1
+        hx = h_world[:, 0:1] # col 0
+        hy = h_world[:, 1:2] # col 1
         x = hx - self.L * np.cos(theta)
         y = hy - self.L * np.sin(theta)
-        Q = np.concatenate([x, y, theta], axis=1).astype(np.float32)
-        return Q
+        q_world = np.concatenate([x, y, theta], axis=1).astype(np.float32)
+        return q_world
 
-    def fk_hand(self, Q: np.ndarray) -> np.ndarray:
+    def fk_hand(self, q_world: np.ndarray) -> np.ndarray:
         """Returns hand position f(Q) given Q (Q shape = n samples x 3)"""
         # print("Q = ", Q)
-        single = (Q.ndim == 1)
+        single = (q_world.ndim == 1)
         if single:
-            Q = Q.reshape(1, 3)
+            q_world = q_world.reshape(1, 3)
             # print("reshaped Q = ", Q)
-        x = Q[:, 0:1]
-        y = Q[:, 1:2]
-        theta = Q[:, 2:3]
+        x = q_world[:, 0:1]
+        y = q_world[:, 1:2]
+        theta = q_world[:, 2:3]
         hand = np.concatenate(
             [x + self.L * np.cos(theta), y + self.L * np.sin(theta)],
             axis=1
@@ -69,10 +69,10 @@ class SimpleEnv:
         # print("hand = ", hand)
         return hand
 
-    def plot(self, one_Q: np.ndarray, one_H: np.ndarray, save=False, save_path=""):
+    def plot(self, one_q_world: np.ndarray, one_h_world: np.ndarray, save=False, save_path=""):
         """Visualize the toy robot for a single configuration Q and target H"""
-        x, y, theta = float(one_Q[0]), float(one_Q[1]), float(one_Q[2])
-        hx_fk, hy_fk = self.fk_hand(one_Q).flatten()
+        x, y, theta = float(one_q_world[0]), float(one_q_world[1]), float(one_q_world[2])
+        hx_fk, hy_fk = self.fk_hand(one_q_world).flatten()
 
         fig, ax = plt.subplots()
 
@@ -94,8 +94,8 @@ class SimpleEnv:
         ax.scatter([hx_fk], [hy_fk], marker="x")  # hand (FK)
 
         # target H
-        print(one_H, "**")
-        hx, hy = float(one_H[0]), float(one_H[1])
+        print(one_h_world, "**")
+        hx, hy = float(one_h_world[0]), float(one_h_world[1])
         ax.scatter([hx], [hy], marker="*")  # target
         ax.plot([hx_fk, hx], [hy_fk, hy], linestyle=":")  # line from hand to target (visual error)
 
@@ -110,10 +110,10 @@ class SimpleEnv:
         return ax
 
     @staticmethod
-    def target_bearing_world(Q: np.ndarray, H: np.ndarray) -> np.ndarray:
+    def target_bearing_world(q_world: np.ndarray, h_world: np.ndarray) -> np.ndarray:
         """World-frame bearing angle from base position (x, y) to target H.
         -> theta_implied = atan2(hy - y, hx - x)"""
-        hx, hy, x, y = H[:, 0], H[:, 1], Q[:, 0], Q[:, 1]
+        hx, hy, x, y = h_world[:, 0], h_world[:, 1], q_world[:, 0], q_world[:, 1]
         th = np.arctan2(hy - y, hx - x) # [-pi, pi]
         th = wrap_to_2pi(th)
         return th.astype(np.float32)

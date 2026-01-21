@@ -5,29 +5,29 @@ from reachability.eval.metrics import *
 
 @dataclass
 class EvalConfig:
-    n_samples_per_H: int
+    n_samples_per_h: int
     n_bins_theta: int # how finely we discretize angle space when estimatig distributions
     eps_hist: float # for KL div - prevents log(0)
     sampling_temperature: float = 0.0
 
-def evaluate_model(env, model, H_test: np.ndarray, cfg: EvalConfig, rng: np.random.Generator) -> dict:
+def evaluate_model(env, model, h_world_test: np.ndarray, c_world_test: np.ndarray, cfg: EvalConfig, rng: np.random.Generator) -> dict:
     """Evaluate on test H points:
-    - Draw S samples per H
+    - Draw S samples per h in h_world_test
     - Compute error/coverage stats"""
-    S = cfg.n_samples_per_H
-    Qs = model.sample(H_test, n_samples=S, rng=rng, sampling_temperature=cfg.sampling_temperature)  # [B,S,3]
+    S = cfg.n_samples_per_h
+    q_samples = model.sample(h_world=h_world_test, c_world=c_world_test, n_samples=S, rng=rng, sampling_temperature=cfg.sampling_temperature)  # [B,S,3]
     
-    err = hand_error(env, Qs, H_test) # [B,S]
+    err = hand_error(env, q_samples, h_world_test) # [B,S]
     err_mean = float(np.mean(err))
     err_median = float(np.median(err))
     err_p95 = float(np.quantile(err, 0.95))
 
-    base_heading_angles = implied_angles(env, Qs, H_test) # [B,S]
+    base_heading_angles = implied_angles(env, q_samples, h_world_test) # [B,S]
 
     # per-H metrics
-    perH_max_gap = np.array([max_angle_gap(base_heading_angles[i]) for i in range(base_heading_angles.shape[0])], dtype=np.float64)
-    max_gap_mean = float(np.mean(perH_max_gap))
-    max_gap_p95 = float(np.quantile(perH_max_gap, 0.95))
+    per_h_max_gap = np.array([max_angle_gap(base_heading_angles[i]) for i in range(base_heading_angles.shape[0])], dtype=np.float64)
+    max_gap_mean = float(np.mean(per_h_max_gap))
+    max_gap_p95 = float(np.quantile(per_h_max_gap, 0.95))
 
     # global KL to uniform over all angles
     th_all = base_heading_angles.reshape(-1)
@@ -45,6 +45,5 @@ def evaluate_model(env, model, H_test: np.ndarray, cfg: EvalConfig, rng: np.rand
         "coverage/max_gap_mean": max_gap_mean,
         "coverage/max_gap_p95": max_gap_p95,
         "coverage/kl_to_uniform": kl,
-        # "stochasticity/var_Q_fixed_H": var,
         "eval/theta_values": th_all.astype(np.float64)
     }

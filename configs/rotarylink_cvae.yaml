@@ -35,13 +35,13 @@ model:
   device: "cpu" # set "cuda" if available
 
 features:
-  basexy_norm_type: "standardize"
+  basexy_norm_type: "relative"
   add_fourier_feat: false
   fourier_feat_scale: 10
   fourier_mapping_size: 4
 
 eval:
-  n_samples_per_H: 200
+  n_samples_per_h: 200
   n_bins_theta: 72
   eps_hist: 1.0e-9
   sampling_temperature: 0

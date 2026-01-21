@@ -1,14 +1,14 @@
 # Fdb version 4
-["bibtex notes"] 1768946549 "notes.aux" "notes.bbl" "notes" 1768946576 0
+["bibtex notes"] 1769026871 "notes.aux" "notes.bbl" "notes" 1769026993 0
   "./reachability_references.bib" 1767575372 9451 a555a2bc6ef2278ce59a23b5f070091e ""
   "/usr/local/texlive/2023/texmf-dist/bibtex/bst/base/plain.bst" 1292289607 20613 bd3fbfa9f64872b81ac57a0dd2ed855f ""
-  "notes.aux" 1768946576 8287 7d12d939ea1ecb211275111816ecdd36 "pdflatex"
+  "notes.aux" 1769026993 8738 2d7674d9981b8ed8742fb180496f17c2 "pdflatex"
   (generated)
   "notes.bbl"
   "notes.blg"
   (rewritten before read)
-["pdflatex"] 1768946575 "/Users/niu/projects/reachability_tests/notes/notes.tex" "notes.pdf" "notes" 1768946576 0
-  "/Users/niu/projects/reachability_tests/notes/notes.tex" 1768946575 50826 63ea687537a72813b4d7941110b329fd ""
+["pdflatex"] 1769026992 "/Users/niu/projects/reachability_tests/notes/notes.tex" "notes.pdf" "notes" 1769026993 0
+  "/Users/niu/projects/reachability_tests/notes/notes.tex" 1769026992 57334 c005e89f86535d3575b007b86fc9feae ""
   "/usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/local/texlive/2023/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2023/texmf-dist/fonts/tfm/adobe/courier/pcrr7t.tfm" 1136768653 960 379cc0019370a9e0208a0a3f949f847a ""
@@ -31,6 +31,7 @@
   "/usr/local/texlive/2023/texmf-dist/fonts/tfm/public/cm/cmmi8.tfm" 1136768653 1520 eccf95517727cb11801f4f1aee3a21b4 ""
   "/usr/local/texlive/2023/texmf-dist/fonts/tfm/public/cm/cmr6.tfm" 1136768653 1300 b62933e007d01cfd073f79b963c01526 ""
   "/usr/local/texlive/2023/texmf-dist/fonts/tfm/public/cm/cmr8.tfm" 1136768653 1292 21c1c5bfeaebccffdb478fd231a0997d ""
+  "/usr/local/texlive/2023/texmf-dist/fonts/tfm/public/cm/cmr9.tfm" 1136768653 1292 6b21b9c2c7bebb38aa2273f7ca0fb3af ""
   "/usr/local/texlive/2023/texmf-dist/fonts/tfm/public/cm/cmsy6.tfm" 1136768653 1116 933a60c408fc0a863a92debe84b2d294 ""
   "/usr/local/texlive/2023/texmf-dist/fonts/tfm/public/cm/cmsy8.tfm" 1136768653 1120 8b7d695260f3cff42e636090a8002094 ""
   "/usr/local/texlive/2023/texmf-dist/fonts/tfm/public/cm/cmti10.tfm" 1136768653 1480 aa8e34af0eb6a2941b776984cf1dfdc4 ""
@@ -203,11 +204,11 @@
   "/usr/local/texlive/2023/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1694645518 4623355 b8cad38412faebe1ce5b780a45db67bd ""
   "/usr/local/texlive/2023/texmf-var/web2c/pdftex/pdflatex.fmt" 1694645474 7883456 4098c4c6c312f18afe3dd0ee5dbb5a39 ""
   "/usr/local/texlive/2023/texmf.cnf" 1678822455 577 1b2b1af17af2508fb20dd85783af4050 ""
-  "notes.aux" 1768946576 8287 7d12d939ea1ecb211275111816ecdd36 "pdflatex"
-  "notes.bbl" 1768946549 348 bbfe71699a21a2578cafe32b15286822 "bibtex notes"
-  "notes.out" 1768946576 5623 d84b42d278e9f13c2855f47683189155 "pdflatex"
-  "notes.tex" 1768946575 50826 63ea687537a72813b4d7941110b329fd ""
-  "notes.toc" 1768946576 4892 3ea65692d8e84adf48fb16abd603ba6b "pdflatex"
+  "notes.aux" 1769026993 8738 2d7674d9981b8ed8742fb180496f17c2 "pdflatex"
+  "notes.bbl" 1769026871 348 bbfe71699a21a2578cafe32b15286822 "bibtex notes"
+  "notes.out" 1769026993 5749 71815dc660093bca7b946e1c1c9b2e22 "pdflatex"
+  "notes.tex" 1769026992 57334 c005e89f86535d3575b007b86fc9feae ""
+  "notes.toc" 1769026993 5073 49e37234d32846548ecd3479e0a01e87 "pdflatex"
   (generated)
   "notes.aux"
   "notes.log"

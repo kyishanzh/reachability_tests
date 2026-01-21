@@ -4,21 +4,21 @@ import numpy as np
 # S = number samples
 # read into the math in this file a lot more carefully
 
-def hand_error(env, Q_samples: np.ndarray, H: np.ndarray) -> np.ndarray:
+def hand_error(env, q_samples: np.ndarray, h_world: np.ndarray) -> np.ndarray:
     """||FK(Q) - H||"""
-    B, S, _ = Q_samples.shape
-    Q_flat = Q_samples.reshape(B * S, -1)  # [B, S, dQ] -> [B * S, dQ]
-    hand = env.fk_hand(Q_flat).reshape(B, S, 2)  # [B * S, 2] -> [B, S, 2]
-    H_rep = H[:, None, :]  # [B, 2] -> [B,1,2]
-    err = np.linalg.norm(hand - H_rep, axis=-1)  #[B, S]
+    B, S, _ = q_samples.shape
+    q_flattened = q_samples.reshape(B * S, -1)  # [B, S, dQ] -> [B * S, dQ]
+    hand = env.fk_hand(q_flattened).reshape(B, S, 2)  # [B * S, 2] -> [B, S, 2]
+    h_world_repeated = h_world[:, None, :]  # [B, 2] -> [B,1,2]
+    err = np.linalg.norm(hand - h_world_repeated, axis=-1)  #[B, S]
     return err.astype(np.float32)
 
-def implied_angles(env, Q_samples: np.ndarray, H: np.ndarray) -> np.ndarray:
+def implied_angles(env, q_samples: np.ndarray, h_world: np.ndarray) -> np.ndarray:
     """Returns implied theta angles in [0, 2pi): shape [B, S]"""
-    B, S, _ = Q_samples.shape
-    Q_flat = Q_samples.reshape(B * S, -1)
-    H_rep = np.repeat(H, repeats=S, axis=0) # [B*S, 2]
-    th = env.target_bearing_world(Q_flat, H_rep).reshape(B, S)
+    B, S, _ = q_samples.shape
+    q_flattened = q_samples.reshape(B * S, -1)
+    h_world_repeated = np.repeat(h_world, repeats=S, axis=0) # [B*S, 2]
+    th = env.target_bearing_world(q_flattened, h_world_repeated).reshape(B, S)
     return th.astype(np.float32)
 
 def kl_to_uniform(theta: np.ndarray, n_bins: int, eps: float = 1e-9) -> float:
@@ -42,6 +42,6 @@ def max_angle_gap(theta: np.ndarray) -> float:
     wrap_gap = (th[0] + 2.0 * np.pi) - th[-1]
     return float(max(np.max(diffs) if diffs.size else 0, wrap_gap))
 
-def var_Q(Q_samples: np.ndarray) -> float:
+def var_Q(q_samples: np.ndarray) -> float:
     """Q_samples: [S, dQ] for a fixed H"""
-    return float(np.mean(np.var(Q_samples.astype(np.float64), axis=0)))
+    return float(np.mean(np.var(q_samples.astype(np.float64), axis=0)))
