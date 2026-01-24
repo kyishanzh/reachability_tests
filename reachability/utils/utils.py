@@ -42,6 +42,34 @@ def grad_global_norm(parameters) -> float:
         total += p.grad.detach().pow(2).sum().item()
     return total ** 0.5
 
+def compute_bucketed_losses(losses: torch.Tensor, time_steps: torch.Tensor, total_steps: int, num_buckets: int, wandb_title: str) -> dict[str, float]:
+    """Groups individual losses into buckets based on their diffusion timestep."""
+    # create boundaries: e.g. [250, 500, 750] for 1000 steps and 4 buckets
+    boundaries = torch.linspace(0, total_steps, num_buckets + 1).to(time_steps.device) # num_buckets + 1 because to split a range into N buckets, you need N + 1 boundary points (4 buckets over [0, 1000]: 0 | 250 | 500 | 750 | 1000)
+
+    # identify which bucket each timestep belongs to
+    bucket_indices = torch.bucketize(time_steps, boundaries[1:-1]) # 1-indexed (1 to num_buckets)
+
+    metrics = {}
+    for i in range(num_buckets):
+        # print(f"losses.shape (inside of compute_bucketed_losses): {losses.shape}")
+        mask = bucket_indices == i
+        if mask.any():
+            low = int(boundaries[i])
+            high = int(boundaries[i+1]) - 1
+            metrics[f"{wandb_title}/t_{low}_{high}"] = losses[mask].mean().item()
+    return metrics
+
+def compute_snr_stats(time_steps: torch.Tensor, alphas_cumprod: torch.Tensor, wandb_title: str) -> dict[str, float]:
+    """SNR(t) = signal variance / noise variance = bar(alpha)_t / (1 - bar(alpha)_t)"""
+    bar_alpha_t = alphas_cumprod.gather(-1, time_steps)
+    # calculate SNR: alpha / (1 - alpha)
+    snr = bar_alpha_t / (1 - bar_alpha_t)
+    return {
+        f"{wandb_title}/snr_mean": snr.mean().item(),
+        f"{wandb_title}/snr_max": snr.max().item(),
+        f"{wandb_title}/snr+min": snr.min().item()
+    }
 
 # DEPRECATED CODE
 # def normalize_base_xy(env, x, y, basexy_norm_type: str = "bound") -> np.ndarray:

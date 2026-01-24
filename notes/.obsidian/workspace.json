@@ -39,12 +39,14 @@
             "id": "52244c2f7920d9c4",
             "type": "leaf",
             "state": {
-              "type": "pdf",
+              "type": "markdown",
               "state": {
-                "file": "notes.pdf"
+                "file": "personal/Talk 1.21.26.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "lucide-file-text",
-              "title": "notes"
+              "icon": "lucide-file",
+              "title": "Talk 1.21.26"
             }
           },
           {
@@ -62,7 +64,7 @@
             }
           }
         ],
-        "currentTab": 3
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -119,8 +121,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "38b549238e8dbc24",
@@ -225,23 +226,23 @@
       "bases:Create new base": false
     }
   },
-  "active": "8228483741bb18b8",
+  "active": "52244c2f7920d9c4",
   "lastOpenFiles": [
+    "pdflatex16742.fls",
     "notes.synctex(busy)",
-    "pdflatex94632.fls",
-    "pdflatex94508.fls",
-    "pdflatex94317.fls",
-    "pdflatex93666.fls",
-    "pdflatex93623.fls",
-    "pdflatex93562.fls",
-    "pdflatex93498.fls",
-    "pdflatex93390.fls",
-    "pdflatex93275.fls",
-    "pdflatex93271.fls",
+    "pdflatex16730.fls",
+    "pdflatex16580.fls",
+    "pdflatex16568.fls",
+    "pdflatex16500.fls",
+    "pdflatex16488.fls",
+    "pdflatex14449.fls",
+    "pdflatex14415.fls",
+    "pdflatex11220.fls",
+    "pdflatex11208.fls",
+    "Robot setups to build.md",
     "Talk 1.21.26.md",
     "personal/Todos.md",
     "personal/Talk 1.21.26.md",
-    "Robot setups to build.md",
     "Todos.md",
     "VAE notes.md",
     "diagrams/mode collapse figure.png",

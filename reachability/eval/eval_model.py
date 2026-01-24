@@ -15,7 +15,7 @@ def evaluate_model(env, model, h_world_test: np.ndarray, c_world_test: np.ndarra
     - Draw S samples per h in h_world_test
     - Compute error/coverage stats"""
     S = cfg.n_samples_per_h
-    q_samples = model.sample(h_world=h_world_test, c_world=c_world_test, n_samples=S, rng=rng, sampling_temperature=cfg.sampling_temperature)  # [B,S,3]
+    q_samples = model.sample(h_world=h_world_test, c_world=c_world_test, n_samples=S, rng=rng, sampling_temperature=cfg.sampling_temperature)  # [B,S,d_q]
     
     err = hand_error(env, q_samples, h_world_test) # [B,S]
     err_mean = float(np.mean(err))

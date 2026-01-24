@@ -333,4 +333,6 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
         sampler._model = model
         return sampler
 
-
+    def count_parameters(self):
+        return sum(p.numel() for p in self._model.parameters() if p.requires_grad)
+        

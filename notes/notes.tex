@@ -110,7 +110,12 @@ Our goal is to learn \textit{where the robot should stand} given a desired grasp
 
 Our target is to model some distribution $p(b, q\mid x_e)$ subject to these constraints $\uparrow$, ideally with some notion of pose quality (visibility, manipulability, clearance, etc.). 
 
-\section{LeKiwi robot}
+\section{3D robot v2: LeKiwi robot}
+
+\section{3D robot v1: Round $(x,y, \psi)$ base with a rotary 2-link arm}
+
+\subsection{Setup}
+
 
 
 \section{Simplified problem v2.1: Round thing with a rotary 2-link arm, generalizable to different workspace sizes}
@@ -494,6 +499,26 @@ with torch.no_grad():
     \end{itemize}
 \end{itemize}
 
+\subsubsection{Conditional diffusion} Diffusion models are trained using MSE loss: $|| \epsilon - \epsilon_\theta(x_t, t)||^2$. Because the loss function forces the model prediction $\epsilon_\theta(x_t, t)$ to match $\epsilon$, the model's output should also roughly approximate $\mathcal{N}(0, I)$. 
+
+\textbf{Metrics to track:}
+\begin{itemize}
+    \item Predicted noise distribution: Since target noise $\epsilon$ is drawn from $\mathcal{N}(0, 1)$, the empirical mean and standard deviation of the model's prdictions $\hat{\epsilon}$ should be: \[\mathbb{E}[\hat{\epsilon}_\theta] \approx 0, \quad \text{Std dev.}[\hat{\epsilon}_\theta] \approx 1\]
+    \begin{itemize}
+        \item Mean $\neq$ 0: The model is systematically biased (predicting drift)
+        \item Std $<< 1$ (denoising too timid): The model is outputting values too close to zero. This is a common failure mode in diffusion called ``regression to the mean,'' where the model gives up and predicts the average noise (0) instead of the actual noise structure. 
+        \item Std $>> 1$ (denoising too aggressive): Gradient explosion or scaling instability.
+    \end{itemize}
+    \item Loss by timestep: The diffusion loss varies depending on the timestep $t$ (bucket into time chunks)
+    \begin{itemize}
+        \item High $t$ (near max steps): The image is mostly noise. Loss is often high because $x_t$ contains very little signal about $x_0$.
+        \item Low $t$ (near 0): The image is mostly signal. Loss should be very low.
+    \end{itemize}
+
+    \item Signal-to-noise ratio weighting: \[\text{SNR}(t) = \frac{\bar{\alpha}_t}{1 - \bar{\alpha}_t}\]
+    where $\bar{\alpha}_t$ is the cumulative product of $1 - \beta_t$ from the scheduler. Logging the SNR helps verify that the noise scheduler is actually destroying the signal correctly.
+\end{itemize}
+
 
 \subsection{Additional notes}
 
@@ -721,6 +746,8 @@ After learning an invertible NN model, we can generate realistic $q$ by:
 
 
 \subsection{Normalizing flow} In separate PDF (\texttt{normalizing flow notes.pdf}).
+
+\subsection{Diffusion models}
 
 
 \subsection{Conceptual comparison of different methods}

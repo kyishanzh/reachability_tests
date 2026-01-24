@@ -246,8 +246,8 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
             if val_loader is not None and (ep % val_frequency == 0):
                 total_val_loss, total_val_nll, total_val_fk = 0.0, 0.0, 0.0
                 val_n_seen = 0
-                self._model.eval()
-                with torch.no_grad():
+                self._model.eval() # switch model into eval mode - disable dropout, does not update batchnorm, etc. - but does not stop gradient tracking!
+                with torch.no_grad(): # disable autograd within the entire block
                     for batch in val_loader:
                         h_world_batch = torch.from_numpy(batch["h_world"]).to(self.device)
                         z, log_detj = self._model(batch['q_feat'], batch['c_feat'])
@@ -371,4 +371,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
 
         sampler._model = model
         return sampler
+        
+    def count_parameters(self):
+        return sum(p.numel() for p in self._model.parameters() if p.requires_grad)
         
