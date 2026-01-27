@@ -35,9 +35,9 @@ class CINNv2(nn.Module): # cINN architecture v2, inspired by https://github.com/
 
         # initialize parameters with small random values
         self.trainable_parameters = [p for p in self.inn.parameters() if p.requires_grad]
-        for p in self.trainable_parameters:
-            p.data = 0.01 * torch.randn_like(p) # make everything smaller
-        # TODO: potentially remove this manual loop and add to subnet to only zero the final layer of the subnet
+        # for p in self.trainable_parameters:
+        #     p.data = 0.01 * torch.randn_like(p) # make everything smaller
+        # TODO: potentially remove this manual loop and add to subnet to only zero the final layer of the subnet - done! removing this manual loop improves performance
 
         self.optimizer = torch.optim.Adam(self.trainable_parameters, lr=lr, weight_decay=1e-5)
 
@@ -58,7 +58,8 @@ class CINNv2(nn.Module): # cINN architecture v2, inspired by https://github.com/
         # notation notes: Ff.Node(prev, module, ...) = take the output of prev, apply this invertible module, and produce a new node
 
         # repeated invertible blocks - {num_blocks} layers (stacking many of these gives an expressive bijection)
-        for k in range(self.num_blocks): # TODO: figure out if performance is better with below manual blocks or using Fm.AllInOneBlock
+        for k in range(self.num_blocks): # TODO: figure out if performance is better with below manual blocks or using Fm.AllInOneBlock -- currently observing worse performance
+            # nodes.append(Ff.Node(nodes[-1], Fm.AllInOneBlock, {'subnet_constructor': subnet, 'affine_clamping': self.clamp}, conditions=cond))
             # 1. permuting step to mix dimensions
             nodes.append(Ff.Node(nodes[-1], Fm.PermuteRandom, {'seed': k}))
             # 2. add ActNorm to stabilize the scale before the coupling transform
@@ -231,6 +232,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
                     # sample z~N, invert to q_hat, penalize fk(q_hat)
                     z_samp = torch.randn_like(z)
                     q_hat, _ = self._model.reverse(z_samp, c_feat_batch)
+                    q_hat = q_hat.squeeze(1)
                     fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, h_world_batch, basexy_norm_type=self.basexy_norm_type)
 
                 # backprop
@@ -280,12 +282,13 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
                         h_world_batch = torch.from_numpy(batch["h_world"]).to(self.device)
                         z, log_detj = self._model(q_feat_batch, c_feat_batch)
                         nll = torch.mean(z ** 2) / 2 - torch.mean(log_detj) / self.d_q_feat
-                        fk = torch.zeros_like(nll) # default FK loss is 0
-                        if self.lambda_fk > 0.0:
-                            # sample z~N, invert to q_hat, penalize fk(q_hat)
-                            z_samp = torch.randn_like(z)
-                            q_hat, _ = self._model.reverse(z_samp, c_feat_batch)
-                            fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, h_world_batch, basexy_norm_type=self.basexy_norm_type)
+                        # compute fk error
+                        z_samp = torch.randn_like(z)
+                        q_hat, _ = self._model.reverse(z_samp, c_feat_batch)
+                        q_hat = q_hat.squeeze(1)
+                        # print("q_hat shape: ", q_hat.shape, " | h_world_batch shape: ", h_world_batch.shape)
+                        fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, h_world_batch, basexy_norm_type=self.basexy_norm_type)
+                        # combined loss
                         loss = torch.mean(nll + self.lambda_fk * fk)
                         
                         batchsize = h_world_batch.shape[0] # last batch size might not equal self.batch_size

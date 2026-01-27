@@ -960,13 +960,13 @@ INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/ot1pcr.fd
 INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/ot1pcr.fd
 INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/ot1pcr.fd
 INPUT /usr/local/texlive/2023/texmf-dist/fonts/tfm/adobe/courier/pcrr7t.tfm
-INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/omspcr.fd
-INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/omspcr.fd
-INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/omspcr.fd
-INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/omspcr.fd
 INPUT /usr/local/texlive/2023/texmf-dist/fonts/vf/adobe/courier/pcrr7t.vf
 INPUT /usr/local/texlive/2023/texmf-dist/fonts/tfm/adobe/courier/pcrr8r.tfm
 INPUT /usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/base/8r.enc
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/omspcr.fd
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/omspcr.fd
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/omspcr.fd
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/omspcr.fd
 INPUT compare_models.aux
 INPUT ./compare_models.out
 INPUT ./compare_models.out

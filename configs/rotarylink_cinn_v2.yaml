@@ -23,12 +23,12 @@ model:
   hidden_dim: 512
   num_blocks: 8
   num_subnet_blocks: 1
-  clamp: 1.0
+  clamp: 0.6
   basexy_norm_type: "relative"
 
   # training
   device: "cpu"
-  epochs: 300
+  epochs: 210
   lr: 5e-4
   lr_milestones: [70, 140]
   lr_gamma: 0.1

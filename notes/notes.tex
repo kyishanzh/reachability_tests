@@ -237,6 +237,15 @@ Read more on this!
 
 \subsection{Training} Refer to section \ref{v2.0 training}.
 
+\subsection{Evaluation metrics}
+
+In addition to the ones introduced in section \ref{eval simple}, we add the following metrics:
+
+\begin{itemize}
+    \item Maximum mean discrepancy (MMD): TL;DR, MMD is defined by the idea of representing distances between distributions as distances between mean embeddings of features. 
+    \item EMD:
+\end{itemize}
+
 
 \section{Simplified problem v2.0: Round thing with a rotary 2-link arm} \label{v2.0}
 
@@ -642,7 +651,7 @@ Rearranging shows that as $\theta$ varies, the base center $(x,y)$ traces out a 
 
 \end{enumerate}
 
-\subsection{Evaluation} 
+\subsection{Evaluation} \label{eval simple}
 Assuming that the ground-truth $p^*(Q \mid H)$ is a uniform distribution over the feasible circle set, i.e.: $\theta \sim \text{Unif}[0, 2\pi) \rightarrow x = h_x - L\cos\theta, \, y = h_y - L\sin\theta$:
 \begin{itemize}
     \item Accuracy: $e_{\text{hand}} (Q, H) \coloneq ||f(Q) - H||$

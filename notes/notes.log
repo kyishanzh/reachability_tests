@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.9.13)  24 JAN 2026 13:34
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.9.13)  27 JAN 2026 08:06
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -683,27 +683,27 @@ LaTeX Warning: `h' float specifier changed to `ht'.
 
 [2{/usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/base/8r.enc}] [3] [4] [5]
 LaTeX Font Info:    Font shape `OT1/pcr/m/it' in size <10> not available
-(Font)              Font shape `OT1/pcr/m/sl' tried instead on input line 350.
+(Font)              Font shape `OT1/pcr/m/sl' tried instead on input line 359.
  [6] [7] [8]
 LaTeX Font Info:    Font shape `OT1/pcr/m/it' in size <9> not available
-(Font)              Font shape `OT1/pcr/m/sl' tried instead on input line 494.
- [9] [10] [11] [12] [13] [14] (./notes.bbl) [15] (./notes.aux)
+(Font)              Font shape `OT1/pcr/m/sl' tried instead on input line 503.
+ [9] [10] [11] [12] [13] [14] [15] (./notes.bbl) [16] (./notes.aux)
 Package rerunfilecheck Info: File `notes.out' has not changed.
-(rerunfilecheck)             Checksum: 7C0617B24E2106E02D294B355193A2B9;6484.
+(rerunfilecheck)             Checksum: 40FDB3F5736BF805A9F09EE051218537;6663.
  ) 
 Here is how much of TeX's memory you used:
- 25133 strings out of 476025
- 465443 string characters out of 5790017
- 1873388 words of memory out of 5000000
- 44893 multiletter control sequences out of 15000+600000
+ 25137 strings out of 476025
+ 465493 string characters out of 5790017
+ 1874388 words of memory out of 5000000
+ 44895 multiletter control sequences out of 15000+600000
  522273 words of font info for 69 fonts, out of 8000000 for 9000
  1302 hyphenation exceptions out of 8191
  102i,14n,104p,873b,1474s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy5.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmti7.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmti8.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/urw/courier/ucrro8a.pfb>
-Output written on notes.pdf (15 pages, 338794 bytes).
+Output written on notes.pdf (16 pages, 339823 bytes).
 PDF statistics:
- 440 PDF objects out of 1000 (max. 8388607)
- 379 compressed objects within 4 object streams
- 113 named destinations out of 1000 (max. 500000)
- 269 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 451 PDF objects out of 1000 (max. 8388607)
+ 389 compressed objects within 4 object streams
+ 115 named destinations out of 1000 (max. 500000)
+ 277 words of extra memory for PDF output out of 10000 (max. 10000000)
 

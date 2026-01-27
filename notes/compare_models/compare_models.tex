@@ -182,11 +182,22 @@ Only the decoder participates in generation, so we have only $P_\text{dec}$ para
 Combined:
 \[\mathcal{L} = \mathcal{L}_{\text{NLL}} + \beta \cdot \mathcal{L}_{\text{KL}} + \lambda_k \cdot \mathcal{L}_{\text{fk\_mse}}\]
 
-\subsection{Strengths vs. weaknesses}
+\subsection{Strengths vs. weaknesses} The cVAE tries to compress robot kinematics into a simplified latent code $z$. It forces the encoder to organize the different ``islands'' (modes, e.g. elbow-up and elbow-down) into distinct regions of the latent Gaussian blob. 
 
 \subsubsection{Strengths}
+\begin{itemize}
+    \item Fast inference: cVAEs generate samples in one-shot (run the decoder once)
+\end{itemize}
+
 
 \subsubsection{Weaknesses}
+
+\begin{itemize}
+    \item Mode averaging: If the encoder isn't perfectly disentangled (clear separation in latent space between the modes), the decoder receives a ``confused'' latent code that can sit between modes. To minimize MSE (VAEs optimize ELBOW, which includes a reconstruction loss MSE), the decoder will output the average of two valid solutions, which in this case would be an invalid solution.
+    \begin{itemize}
+        \item Potential fix: Hierarchical VAE or VQ-VAE (discrete latent codes) $\rightarrow$ could snap the latent code to specific modes, fixing the blurring issue.
+    \end{itemize}
+\end{itemize}
 
 \subsection{Empirical performance}
 
@@ -314,7 +325,19 @@ P_{\text{cINN}} = \underbrace{n_b}_{\text{Blocks}} \cdot \left[ \underbrace{2d_{
 Combined loss:
 \[\mathcal{L} = \mathcal{L}_{\text{NLL}} + \lambda_k \mathcal{L}_{\text{fk\_mse}}\]
 
-\subsection{Strengths vs. weaknesses}
+\subsection{Strengths vs. weaknesses} An INN is a differentiable and invertible function. So, an INN trained on a Gaussian prior $p_Z(z)$ (aka. normalizing flow) is like printing the Gaussian distribution on a rubber sheet and stretching it. We can stretch the sheet to cover two widely separated islands, but you cannot cut the sheet. 
+
+\subsubsection{Strengths}
+
+\subsubsection{Weaknesses}
+\begin{itemize}
+    \item Potential numerical instability: To model two disconnected IK solutions (multiple modes), the INN must stretch an infinitely thin ``thread'' of probability mass between them to keep the function continuous. This requires the Jacobian $\frac{\partial x}{\partial z}$ to be enormous in the region between modes: we want to stretch a tiny sliver of latent space (stay within the peak of the latent Gaussian since both modes should be predicted with high probability) across the much larger gap between the two modes in configuration space, implying that between the modes,
+    \[\text{distance in }x >> \text{distance in } z \Rightarrow \bigg|\bigg| \frac{\partial x}{\partial z}\bigg|\bigg| >> 1 \Rightarrow \text{Jacobian blows up}\]
+
+    \begin{itemize}
+        \item $\uparrow$ Thus, training INNs to model our disconnected IK solution manifold has the risk of numerical instability (exploding gradients, as backprop passes through $\log \det J$). Or, the model places a faulty ``bridge'' of low-probability samples connecting the valid modes (similar to the VAE mode averaging problem).
+    \end{itemize}
+\end{itemize}
 
 \subsection{Empirical performance}
 
@@ -356,8 +379,21 @@ Using lots of algebra, we can show that ELBO loss for maximizing the log-likelih
 
 We train on this MSE loss. 
 
+\subsection{Strengths vs. weaknesses} Diffusion does not map $z \rightarrow q$ in one step: it learns a vector field that slowly pushes noise toward data.
 
-\subsection{Strengths vs. weaknesses}
+\subsubsection{Strengths}
+
+\begin{itemize}
+    \item Diffusion models learn a time-dependent score $s_\theta(x,t)$ (equivalent to a denoiser), which specifies a reverse-time transport that gradually sharpens and separates mass into the original disjoint modes: so diffusion models do not have a prior forcing the model to be a diffeomorphism the way that INNs do, allowing diffusion models to more easily approximate distributions with disconnected modes. 
+\end{itemize}
+
+\subsubsection{Weaknesses}
+
+\begin{itemize}
+    \item Slow inference: While cVAE and cINN inference is one pass through the model, diffusion inference requires many (e.g. 50) passes through the model to get one sample $\Rightarrow$ $\approx50\times$ (or less/more) the amount of inference compute required.
+\end{itemize}
+
+
 
 \subsection{Empirical performance}
 

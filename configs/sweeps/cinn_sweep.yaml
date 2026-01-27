@@ -1,0 +1,17 @@
+method: bayes
+metric:
+  name: val/nll
+  goal: minimize
+parameters:
+  # Use dot notation to map to base config structure
+  model.lr:
+    distribution: log_uniform_values
+    min: 1e-6
+    max: 5e-4
+  model.clamp:
+    values: [0.4, 0.6, 0.8, 1.0]
+  # model.num_blocks:
+  #   values: [12, 16, 20]
+  # Can sweep env parameters too!
+  # env.base_pos_eps:
+  #   values: [0.01, 0.05, 0.1]

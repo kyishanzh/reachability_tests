@@ -13,14 +13,15 @@
 \contentsline {subsubsection}{\tocsubsubsection {}{4.3.2}{Why we keep the conditional architecture}}{4}{subsubsection.4.3.2}%
 \contentsline {subsubsection}{\tocsubsubsection {}{4.3.3}{Egocentric learning (canonicalization) papers}}{4}{subsubsection.4.3.3}%
 \contentsline {subsection}{\tocsubsection {}{4.4}{Training}}{4}{subsection.4.4}%
+\contentsline {subsection}{\tocsubsection {}{4.5}{Evaluation metrics}}{4}{subsection.4.5}%
 \contentsline {section}{\tocsection {}{5}{Simplified problem v2.0: Round thing with a rotary 2-link arm}}{4}{section.5}%
 \contentsline {subsection}{\tocsubsection {}{5.1}{Setup}}{4}{subsection.5.1}%
 \contentsline {subsubsection}{\tocsubsubsection {}{5.1.1}{Critical error with this setup}}{5}{subsubsection.5.1.1}%
 \contentsline {subsubsection}{\tocsubsubsection {}{5.1.2}{Fixing this setup}}{6}{subsubsection.5.1.2}%
 \contentsline {subsection}{\tocsubsection {}{5.2}{Forward kinematics}}{6}{subsection.5.2}%
 \contentsline {subsubsection}{\tocsubsubsection {}{5.2.1}{\texttt {fk\_mse\_from\_qfeat} loss function math}}{6}{subsubsection.5.2.1}%
-\contentsline {subsection}{\tocsubsection {}{5.3}{Training}}{6}{subsection.5.3}%
-\contentsline {subsubsection}{\tocsubsubsection {}{5.3.1}{Nearest neighbors baseline}}{6}{subsubsection.5.3.1}%
+\contentsline {subsection}{\tocsubsection {}{5.3}{Training}}{7}{subsection.5.3}%
+\contentsline {subsubsection}{\tocsubsubsection {}{5.3.1}{Nearest neighbors baseline}}{7}{subsubsection.5.3.1}%
 \contentsline {subsubsection}{\tocsubsubsection {}{5.3.2}{Conditional VAE}}{7}{subsubsection.5.3.2}%
 \contentsline {subsubsection}{\tocsubsubsection {}{5.3.3}{Conditional INN}}{8}{subsubsection.5.3.3}%
 \contentsline {subsubsection}{\tocsubsubsection {}{5.3.4}{Conditional diffusion}}{9}{subsubsection.5.3.4}%
@@ -28,17 +29,17 @@
 \contentsline {subsubsection}{\tocsubsubsection {}{5.4.1}{Featurization}}{10}{subsubsection.5.4.1}%
 \contentsline {section}{\tocsection {}{6}{Simplified problem v1: Round thing with a fixed stick}}{10}{section.6}%
 \contentsline {subsection}{\tocsubsection {}{6.1}{Setup}}{10}{subsection.6.1}%
-\contentsline {subsection}{\tocsubsection {}{6.2}{Forward kinematics}}{10}{subsection.6.2}%
+\contentsline {subsection}{\tocsubsection {}{6.2}{Forward kinematics}}{11}{subsection.6.2}%
 \contentsline {subsection}{\tocsubsection {}{6.3}{Approaches}}{11}{subsection.6.3}%
 \contentsline {subsection}{\tocsubsection {}{6.4}{Evaluation}}{12}{subsection.6.4}%
 \contentsline {subsection}{\tocsubsection {}{6.5}{Extending to more general cases}}{12}{subsection.6.5}%
-\contentsline {subsection}{\tocsubsection {}{6.6}{Potential next-step extensions}}{12}{subsection.6.6}%
-\contentsline {section}{\tocsection {}{7}{Extra notes}}{12}{section.7}%
-\contentsline {subsection}{\tocsubsection {}{7.1}{Mode collapse}}{12}{subsection.7.1}%
-\contentsline {subsection}{\tocsubsection {}{7.2}{Conditional VAE theory}}{12}{subsection.7.2}%
+\contentsline {subsection}{\tocsubsection {}{6.6}{Potential next-step extensions}}{13}{subsection.6.6}%
+\contentsline {section}{\tocsection {}{7}{Extra notes}}{13}{section.7}%
+\contentsline {subsection}{\tocsubsection {}{7.1}{Mode collapse}}{13}{subsection.7.1}%
+\contentsline {subsection}{\tocsubsection {}{7.2}{Conditional VAE theory}}{13}{subsection.7.2}%
 \contentsline {subsubsection}{\tocsubsubsection {}{7.2.1}{Motivation}}{13}{subsubsection.7.2.1}%
 \contentsline {subsubsection}{\tocsubsubsection {}{7.2.2}{Model architecture}}{13}{subsubsection.7.2.2}%
-\contentsline {subsection}{\tocsubsection {}{7.3}{FrEIA INN theory}}{13}{subsection.7.3}%
+\contentsline {subsection}{\tocsubsection {}{7.3}{FrEIA INN theory}}{14}{subsection.7.3}%
 \contentsline {subsubsection}{\tocsubsubsection {}{7.3.1}{Hand-wavy intuition}}{14}{subsubsection.7.3.1}%
 \contentsline {subsubsection}{\tocsubsubsection {}{7.3.2}{Why layers need to be invertible}}{14}{subsubsection.7.3.2}%
 \contentsline {subsubsection}{\tocsubsubsection {}{7.3.3}{More concrete math}}{14}{subsubsection.7.3.3}%
@@ -47,8 +48,8 @@
 \contentsline {subsection}{\tocsubsection {}{7.6}{Conceptual comparison of different methods}}{14}{subsection.7.6}%
 \contentsline {subsubsection}{\tocsubsubsection {}{7.6.1}{Flow}}{14}{subsubsection.7.6.1}%
 \contentsline {subsubsection}{\tocsubsubsection {}{7.6.2}{cVAE}}{14}{subsubsection.7.6.2}%
-\contentsline {subsubsection}{\tocsubsubsection {}{7.6.3}{Diffusion}}{14}{subsubsection.7.6.3}%
-\contentsline {subsection}{\tocsubsection {}{7.7}{Invertible neural networks vs. normalizing flow}}{14}{subsection.7.7}%
-\contentsline {subsubsection}{\tocsubsubsection {}{7.7.1}{INNs as generative models}}{14}{subsubsection.7.7.1}%
-\contentsline {subsubsection}{\tocsubsubsection {}{7.7.2}{INNs that are not normalizing flow models}}{14}{subsubsection.7.7.2}%
-\contentsline {section}{\tocsection {}{}{References}}{15}{section*.2}%
+\contentsline {subsubsection}{\tocsubsubsection {}{7.6.3}{Diffusion}}{15}{subsubsection.7.6.3}%
+\contentsline {subsection}{\tocsubsection {}{7.7}{Invertible neural networks vs. normalizing flow}}{15}{subsection.7.7}%
+\contentsline {subsubsection}{\tocsubsubsection {}{7.7.1}{INNs as generative models}}{15}{subsubsection.7.7.1}%
+\contentsline {subsubsection}{\tocsubsubsection {}{7.7.2}{INNs that are not normalizing flow models}}{15}{subsubsection.7.7.2}%
+\contentsline {section}{\tocsection {}{}{References}}{16}{section*.2}%

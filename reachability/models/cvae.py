@@ -221,7 +221,7 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
                         out = self._model(batch['c_feat'], batch['q_feat'])
                         rec = gaussian_nll(batch['q_feat'], out["mu_q"], out["logvar_q"])
                         kl = kl_standard_normal(out["mu_z"], out["logvar_z"]) # [B]
-                        fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], h_world_batch, basexy_norm_type=self.basexy_norm_type)
+                        fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], h_world_batch, basexy_norm_type=self.basexy_norm_type) # fk computation based on predicted mu
                         current_beta = get_beta(ep, self.epochs, self.beta) # dynamic beta
                         loss = torch.mean(rec + current_beta * kl + self.lambda_fk * fk_err2)
                         
@@ -236,7 +236,7 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
                     "val/loss": avg_val_loss,
                     "val/rec": total_val_rec/val_n_seen,
                     "val/kl": total_val_kl/val_n_seen,
-                    "val/fk": total_val_fk/val_n_seen
+                    "val/fk_mu": total_val_fk/val_n_seen
                 })
                 # option to save model checkpoint with best val loss -- only kick in when half of the epochs have passed
                 if save_best_val_ckpt and save_path and ep > self.epochs / 2:

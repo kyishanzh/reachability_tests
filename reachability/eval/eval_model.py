@@ -38,6 +38,20 @@ def evaluate_model(env, model, h_world_test: np.ndarray, c_world_test: np.ndarra
     # Q0 = model.sample(H0, n_samples=2000, rng=rng)[0]  # [S,3]
     # var = var_Q(Q0)
 
+    # distributional comparison: compare generate joint configs vs. ground truth joint configs
+    num_h = h_world_test.shape[0]
+    mmd_scores = []
+    for i in range(num_h):
+        # samples for this specific H
+        pred_cloud = q_samples[i] # shape [S, d_q]
+        h_repeated = np.tile(h_world_test[i], (S, 1))
+        # print("h repeated shape: ", h_repeated.shape)
+        gt_cloud = env.sample_q_given_h_uniform(h_repeated, rng)
+        # print("gt cloud shape = ", gt_cloud.shape)        
+        score = compute_mmd(pred_cloud, gt_cloud)
+        mmd_scores.append(score)
+    avg_mmd = np.mean(mmd_scores)
+
     return {
         "hand_err/mean": err_mean,
         "hand_err/median": err_median,
@@ -45,5 +59,6 @@ def evaluate_model(env, model, h_world_test: np.ndarray, c_world_test: np.ndarra
         "coverage/max_gap_mean": max_gap_mean,
         "coverage/max_gap_p95": max_gap_p95,
         "coverage/kl_to_uniform": kl,
-        "eval/theta_values": th_all.astype(np.float64)
+        "eval/theta_values": th_all.astype(np.float64),
+        "eval/avg_mmd": avg_mmd
     }
