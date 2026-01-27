@@ -2,3 +2,4 @@ __pycache__
 wandb
 notes/personal
 outputs/archived_ckpts
+outputs
