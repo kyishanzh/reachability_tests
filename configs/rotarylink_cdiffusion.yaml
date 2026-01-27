@@ -26,7 +26,7 @@ model:
 
   # training
   device: "cpu"
-  epochs: 200
+  epochs: 300
   lr: 1e-4
   batch_size: 256
   num_train_timesteps: 1000

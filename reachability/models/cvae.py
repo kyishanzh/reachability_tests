@@ -16,7 +16,7 @@ from reachability.models.base import ConditionalGenerativeModel
 from reachability.models.loss import fk_mse_from_qfeat_wrapper
 from reachability.models.features import q_world_to_feat, c_world_to_feat, q_feat_to_world
 from reachability.utils.utils import grad_global_norm
-from reachability.models.cvae_helpers import MLP, ResidualMLP, gaussian_nll, kl_standard_normal, get_beta
+from reachability.models.submodels import MLP, ResidualMLP, gaussian_nll, kl_standard_normal, get_beta
 
 class ConditionalVAE(nn.Module):
     """
@@ -30,7 +30,8 @@ class ConditionalVAE(nn.Module):
             z_dim: int,
             # resnet setup
             hidden_dim: int = 512,
-            num_blocks: int = 3,
+            num_enc_blocks: int = 3,
+            num_dec_blocks: int = 3,
             # vanilla MLP setup
             # enc_hidden: Sequence[int],
             # dec_hidden: Sequence[int],
@@ -47,15 +48,17 @@ class ConditionalVAE(nn.Module):
             in_dim=d_c_feat + d_q_feat,
             hidden_dim=hidden_dim,
             out_dim=2 * z_dim,
-            num_blocks=num_blocks
+            num_blocks=num_enc_blocks
         )
+        print("num params in encoder = ", sum(p.numel() for p in self.encoder.parameters() if p.requires_grad))
         # self.decoder = MLP(dH + z_dim, dec_hidden, 2 * dQ_feat) # [mu, logvar]
         self.decoder = ResidualMLP(
             in_dim=d_c_feat + z_dim,
             hidden_dim=hidden_dim,
             out_dim=2 * d_q_feat,
-            num_blocks=num_blocks
+            num_blocks=num_dec_blocks
         )
+        print("num params in decoder = ", sum(p.numel() for p in self.decoder.parameters() if p.requires_grad))
 
     def encode(self, c_feat: torch.Tensor, q_feat: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """q(z | c_feat, q_feat)"""
@@ -102,7 +105,8 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
     # enc_hidden: tuple[int, ...] = (128, 128)
     # dec_hidden: tuple[int, ...] = (128, 128)
     hidden_dim: int = 512
-    num_blocks: int = 3
+    num_enc_blocks: int = 3,
+    num_dec_blocks: int = 3,
     lr: float = 1e-3
     batch_size: int = 256
     epochs: int = 50
@@ -134,10 +138,13 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
             d_q_feat=self.d_q_feat,
             z_dim=self.z_dim,
             hidden_dim=self.hidden_dim,
-            num_blocks=self.num_blocks,
+            num_enc_blocks=self.num_enc_blocks,
+            num_dec_blocks=self.num_dec_blocks
             # enc_hidden=self.enc_hidden,
             # dec_hidden=self.dec_hidden
         ).to(self.device)
+
+        print("num trainable params in model: ", self.count_parameters())
 
         opt = torch.optim.Adam(self._model.parameters(), lr=self.lr)
 
@@ -157,7 +164,7 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
                 rec = gaussian_nll(q_feat_batch, out["mu_q"], out["logvar_q"]) # [B]
                 kl = kl_standard_normal(out["mu_z"], out["logvar_z"]) # [B]
                 fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], h_world_batch, basexy_norm_type=self.basexy_norm_type)
-                current_beta = self.beta #get_beta(ep, self.epochs, self.beta) # dynamic beta
+                current_beta = get_beta(ep, self.epochs, self.beta) # dynamic beta
                 loss = torch.mean(rec + current_beta * kl + self.lambda_fk * fk_err2)
 
                 opt.zero_grad(set_to_none=True)
@@ -287,7 +294,8 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
                 "d_c_feat": self._model.d_c_feat,
                 "z_dim": self.z_dim,
                 "hidden_dim": self.hidden_dim,
-                "num_blocks": self.num_blocks,
+                "num_enc_blocks": self.num_enc_blocks,
+                "num_dec_blocks": self.num_dec_blocks,
                 # "enc_hidden": list(self.enc_hidden),
                 # "dec_hidden": list(self.dec_hidden),
                 "beta": self.beta,
@@ -309,7 +317,8 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
             d_c_feat=int(ckpt["d_c_feat"]),
             z_dim=ckpt["z_dim"],
             hidden_dim=ckpt["hidden_dim"],
-            num_blocks=ckpt["num_blocks"],
+            num_enc_blocks=ckpt["num_enc_blocks"],
+            num_dec_blocks=ckpt["num_dec_blocks"],
             # enc_hidden=tuple(ckpt["enc_hidden"]),
             # dec_hidden=tuple(ckpt["dec_hidden"]),
             beta=ckpt["beta"],
@@ -322,7 +331,8 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
             d_q_feat=ckpt["d_q_feat"],
             z_dim=ckpt["z_dim"],
             hidden_dim=ckpt["hidden_dim"],
-            num_blocks=ckpt["num_blocks"],
+            num_enc_blocks=ckpt["num_enc_blocks"],
+            num_dec_blocks=ckpt["num_dec_blocks"],
             # enc_hidden=ckpt["enc_hidden"],
             # dec_hidden=ckpt["dec_hidden"],
         ).to(device)

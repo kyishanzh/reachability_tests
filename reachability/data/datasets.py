@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any
 import numpy as np
 import torch
+import torch.nn as nn
 from torch.utils.data import Dataset as TorchDataset
 
 from reachability.models.features import q_world_to_feat, c_world_to_feat
@@ -116,3 +117,27 @@ class Dataset(TorchDataset):
 
         return train_ds, val_ds
 
+class Normalizer(nn.Module): # TODO: read through and understand this code + decide if we want to normalize conditioning inputs too 
+    """
+    Simple standard scaler (z-score) module.
+    x_norm = (x - mean) / std
+    """
+    def __init__(self, size: int, epsilon: float = 1e-5, device="cpu"):
+        super().__init__()
+        self.register_buffer('mean', torch.zeros(size, device=device))
+        self.register_buffer('std', torch.ones(size, device=device))
+        self.epsilon = epsilon
+        self.fitted = False # TODO: potentially get rid of this ? not using it in code
+
+    def fit(self, data_tensor: torch.Tensor):
+        """Compute stats from a large batch of data."""
+        self.mean = torch.mean(data_tensor, dim=0)
+        self.std = torch.clamp(torch.std(data_tensor, dim=0), min=self.epsilon) # TODO: read into why we do this
+        self.fitted = True
+
+    def normalize(self, x: torch.Tensor) -> torch.Tensor:
+        return (x - self.mean) / self.std
+
+    def unnormalize(self, x: torch.Tensor) -> torch.Tensor:
+        return x * self.std + self.mean
+        

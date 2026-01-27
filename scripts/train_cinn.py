@@ -91,6 +91,7 @@ def main():
         d_q_feat=train_loader.dataset.d_q_feat,
         d_c_feat=train_loader.dataset.d_c_feat,
         num_blocks=int(mcfg["num_blocks"]),
+        num_subnet_blocks=int(mcfg["num_subnet_blocks"]),
         clamp=float(mcfg.get("clamp", 1.0)),
         basexy_norm_type=basexy_norm_type,
         # training
@@ -102,6 +103,7 @@ def main():
         lr_gamma=mcfg.get("lr_gamma", 0.1),
         batch_size=batch_size,
         grad_clip=float(mcfg.get("grad_clip", 10.)),
+        dropout=float(mcfg.get("dropout", 0)),
         # optional constraint shaping
         lambda_fk=float(mcfg.get("lambda_fk", 0.0)),
         # wandb

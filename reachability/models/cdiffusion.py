@@ -12,6 +12,8 @@ import torch.nn as nn
 
 from diffusers import DDPMScheduler
 
+from reachability.data.datasets import Normalizer
+from reachability.models.submodels import ResidualMLP
 from reachability.models.base import ConditionalGenerativeModel
 from reachability.models.loss import fk_mse_from_qfeat_wrapper
 from reachability.models.features import c_world_to_feat, q_feat_to_world, q_world_to_feat
@@ -34,21 +36,6 @@ class SinusoidalPosEmb(nn.Module):
         emb = x[:, None] * emb[None, :]
         emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
         return emb
-
-class ResidualBlock(nn.Module): # Consolidate with version of this class in cvae_helpers.py later
-    def __init__(self, dim, dropout=0.0):
-        super().__init__()
-        self.block = nn.Sequential(
-            nn.LayerNorm(dim),
-            nn.SiLU(), # read literature explaining why SiLU works better than ReLU for diffusion
-            nn.Linear(dim, dim),
-            nn.LayerNorm(dim),
-            nn.SiLU(),
-            nn.Dropout(dropout),
-            nn.Linear(dim, dim)
-        )
-    def forward(self, x):
-        return x + self.block(x)
 
 class ResMLPDenoiser(nn.Module):
     def __init__(
@@ -78,20 +65,29 @@ class ResMLPDenoiser(nn.Module):
             nn.Linear(self.time_dim * 2, self.time_dim)
         )
 
+        # 2*: testing out using ResMLP
+        self.net = ResidualMLP(
+            in_dim=d_q_feat + d_c_feat + self.time_dim, # TODO: potentially add time embedding to *every* block to prevent model from forgetting -- currently doing "concatenation-at-start," can look into better methods later
+            hidden_dim=hidden_dim,
+            out_dim=d_q_feat, # predicting epsilon,
+            num_blocks=num_res_blocks,
+            dropout=dropout
+        ) # adds extra SiLU before returning final layer compared to below implementation -- observe if this is a problem
+
         # 2. input projection
         # concatenate input (q) + condition (c) + time embedding
-        input_dim = d_q_feat + d_c_feat + self.time_dim
-        self.input_proj = nn.Linear(input_dim, hidden_dim)
+        # input_dim = d_q_feat + d_c_feat + self.time_dim
+        # self.input_proj = nn.Linear(input_dim, hidden_dim)
 
-        # 3. residual net
-        self.res_blocks = nn.ModuleList([ # can't use nn.Sequential because we want to manually control how the forward pass goes in diffusion model
-            ResidualBlock(hidden_dim, dropout=dropout)
-            for _ in range(num_res_blocks)
-        ])
+        # # 3. residual net
+        # self.res_blocks = nn.ModuleList([ # can't use nn.Sequential because we want to manually control how the forward pass goes in diffusion model
+        #     ResidualBlock(hidden_dim, dropout=dropout)
+        #     for _ in range(num_res_blocks)
+        # ])
 
-        # 4. output projection
-        self.final_norm = nn.LayerNorm(hidden_dim)
-        self.final_linear = nn.Linear(hidden_dim, d_q_feat) # prediction of noise (epsilon)
+        # # 4. output projection
+        # self.final_norm = nn.LayerNorm(hidden_dim)
+        # self.final_linear = nn.Linear(hidden_dim, d_q_feat) # prediction of noise (epsilon)
 
     def forward(self, x, t, c):
         # embed time
@@ -101,39 +97,18 @@ class ResMLPDenoiser(nn.Module):
         x_input = torch.cat([x, c, t_emb], dim=-1)
         # print("x_input shape: ", x_input.shape)
 
+        # * testing out new consolidated ResidualMLP
+        return self.net(x_input)
+
         # project to hidden dim
-        h = self.input_proj(x_input)
+        # h = self.input_proj(x_input)
 
-        # apply residual blocks
-        for block in self.res_blocks:
-            h = block(h)
+        # # apply residual blocks
+        # for block in self.res_blocks:
+        #     h = block(h)
         
-        h = self.final_norm(h)
-        return self.final_linear(h)
-
-class Normalizer(nn.Module): # TODO: read through and understand this code + decide if we want to normalize conditioning inputs too 
-    """
-    Simple standard scaler (z-score) module.
-    x_norm = (x - mean) / std
-    """
-    def __init__(self, size: int, epsilon: float = 1e-5, device="cpu"):
-        super().__init__()
-        self.register_buffer('mean', torch.zeros(size, device=device))
-        self.register_buffer('std', torch.ones(size, device=device))
-        self.epsilon = epsilon
-        self.fitted = False # TODO: potentially get rid of this ? not using it in code
-
-    def fit(self, data_tensor: torch.Tensor):
-        """Compute stats from a large batch of data."""
-        self.mean = torch.mean(data_tensor, dim=0)
-        self.std = torch.clamp(torch.std(data_tensor, dim=0), min=self.epsilon) # TODO: read into why we do this
-        self.fitted = True
-
-    def normalize(self, x: torch.Tensor) -> torch.Tensor:
-        return (x - self.mean) / self.std
-
-    def unnormalize(self, x: torch.Tensor) -> torch.Tensor:
-        return x * self.std + self.mean
+        # h = self.final_norm(h)
+        # return self.final_linear(h)
 
 @dataclass
 class DiffusionConditionalSampler(ConditionalGenerativeModel):
@@ -156,6 +131,7 @@ class DiffusionConditionalSampler(ConditionalGenerativeModel):
     batch_size: int = 256
     num_train_timesteps: int = 1000
     grad_clip: float = 1.0
+    dropout: float = 0.0
 
     # inference
     num_inference_timesteps: int = 50
@@ -185,8 +161,11 @@ class DiffusionConditionalSampler(ConditionalGenerativeModel):
             d_q_feat=self.d_q_feat,
             d_c_feat=self.d_c_feat,
             hidden_dim=self.hidden_dim,
-            num_res_blocks=self.num_blocks
+            num_res_blocks=self.num_blocks,
+            dropout=self.dropout
         ).to(self.device)
+
+        print("num trainable params in model: ", self.count_parameters())
 
         opt = torch.optim.Adam(self._model.parameters(), lr=self.lr)
 
@@ -310,7 +289,7 @@ class DiffusionConditionalSampler(ConditionalGenerativeModel):
         seed = int(rng.integers(0, 2**31 - 1))
         torch.manual_seed(seed)
 
-        # 1. move conditioning inputs into torch
+        # 1. move conditioning inputs into torch - should normalize these if we normalize them during training later
         c_feat = c_world_to_feat(self.env, c_world, basexy_norm_type=self.basexy_norm_type)
         c_feat_batch = torch.from_numpy(c_feat.astype(np.float32)).to(self.device) # [B, d_c]
         B = c_feat_batch.shape[0] # batch size

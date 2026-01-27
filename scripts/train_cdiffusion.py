@@ -99,6 +99,7 @@ def main():
         num_train_timesteps=int(mcfg.get("num_train_timesteps", 1000)),
         num_inference_timesteps=int(mcfg["num_inference_timesteps"]),
         grad_clip=float(mcfg.get("grad_clip", 1.)),
+        dropout=float(mcfg.get("dropout", 0)),
         # optional constraint shaping
         # lambda_fk=float(mcfg.get("lambda_fk", 0.0)),
         # wandb

@@ -12,19 +12,23 @@ import torch.nn as nn
 import FrEIA.framework as Ff
 import FrEIA.modules as Fm
 
+from reachability.data.datasets import Normalizer
+from reachability.models.submodels import ResidualMLP
 from reachability.models.base import ConditionalGenerativeModel
 from reachability.models.loss import fk_mse_from_qfeat_wrapper
 from reachability.models.features import c_world_to_feat, q_feat_to_world, q_world_to_feat
 from reachability.utils.utils import grad_global_norm
 
 class CINNv2(nn.Module): # cINN architecture v2, inspired by https://github.com/vislearn/conditional_INNs/tree/master/mnist_minimal_example
-    def __init__(self, hidden_dim, d_c_feat, d_q_feat, num_blocks, lr=5e-4, clamp=1.0):
+    def __init__(self, hidden_dim, d_c_feat, d_q_feat, num_blocks, num_subnet_blocks=1, lr=5e-4, clamp=1.0, dropout=0):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.d_c_feat = d_c_feat # dimension of conditioning node
         self.d_q_feat = d_q_feat
         self.num_blocks = num_blocks
+        self.num_subnet_blocks = num_subnet_blocks
         self.clamp = clamp
+        self.dropout = dropout
 
         # build the model
         self.inn = self.build_inn()
@@ -40,8 +44,11 @@ class CINNv2(nn.Module): # cINN architecture v2, inspired by https://github.com/
     def build_inn(self):
         # subnet
         def subnet(ch_in, ch_out):
-            return nn.Sequential(nn.Linear(ch_in, self.hidden_dim), nn.ReLU(), nn.Linear(self.hidden_dim, ch_out))
-            # TODO: potentially add zeroing out final layer here
+            # net = nn.Sequential(nn.Linear(ch_in, self.hidden_dim), nn.ReLU(), nn.Linear(self.hidden_dim, ch_out))
+            net = ResidualMLP(
+                in_dim=ch_in, hidden_dim=self.hidden_dim, out_dim=ch_out, num_blocks=self.num_subnet_blocks, dropout=self.dropout, zero_init_last=True
+            )# zero init the final layer to start model as the identity transform: x * exp(0) + 0 = x
+            return net
         # ConditionNode: the graph takes an extra input c in R^10 (the one-hot label) -> this conditioning is fed into each coupling block so the transform becomes class-specific
         cond = Ff.ConditionNode(self.d_c_feat)
 
@@ -51,7 +58,7 @@ class CINNv2(nn.Module): # cINN architecture v2, inspired by https://github.com/
         # notation notes: Ff.Node(prev, module, ...) = take the output of prev, apply this invertible module, and produce a new node
 
         # repeated invertible blocks - {num_blocks} layers (stacking many of these gives an expressive bijection)
-        for k in range(self.num_blocks):
+        for k in range(self.num_blocks): # TODO: figure out if performance is better with below manual blocks or using Fm.AllInOneBlock
             # 1. permuting step to mix dimensions
             nodes.append(Ff.Node(nodes[-1], Fm.PermuteRandom, {'seed': k}))
             # 2. add ActNorm to stabilize the scale before the coupling transform
@@ -62,14 +69,14 @@ class CINNv2(nn.Module): # cINN architecture v2, inspired by https://github.com/
         nodes.append(Ff.OutputNode(nodes[-1])) # mark last node of graph as the graph output
         return Ff.GraphINN(nodes + [cond], verbose=False) # nodes + [cond] = single flat list containing all nodes on the data path, the condition node, and the output node
 
-    def forward(self, q_feat: torch.Tensor, H: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, q_feat: torch.Tensor, c_feat: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         # SequenceINN expects conditions as a list when cond indices are used
-        z, log_jacobian = self.inn(q_feat, c=[H], jac=True) # store jacobian to compute likelihood for loss (during training)
+        z, log_jacobian = self.inn(q_feat, c=[c_feat], jac=True) # store jacobian to compute likelihood for loss (during training)
         return z, log_jacobian
     
     @torch.no_grad()
-    def reverse(self, z: torch.Tensor, H: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        q_feat, log_det = self.inn(z, c=[H], rev=True)
+    def reverse(self, z: torch.Tensor, c_feat: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        q_feat, log_det = self.inn(z, c=[c_feat], rev=True)
         return q_feat, log_det
 
 class SimpleCINN(nn.Module):
@@ -129,6 +136,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
     d_q_feat: int
     d_c_feat: int
     num_blocks: int
+    num_subnet_blocks: int
     clamp: float = 1.0
     basexy_norm_type: str = "relative"
 
@@ -141,6 +149,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
     lr_gamma: float = 0.1
     batch_size: int = 256 # mnist cINN example also uses this batch size
     grad_clip: float = 10.
+    dropout: float = 0.0
 
     # optional constraint shaping
     lambda_fk: float = 0.0
@@ -166,13 +175,26 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
             d_c_feat=self.d_c_feat,
             d_q_feat=self.d_q_feat,
             num_blocks=self.num_blocks,
+            num_subnet_blocks=self.num_subnet_blocks,
             lr=self.lr,
-            clamp=self.clamp
+            clamp=self.clamp,
+            dropout=self.dropout
         ).to(self.device)
+
+        print("num trainable params in model: ", self.count_parameters())
 
         # opt = torch.optim.Adam(self._model.parameters(), lr=self.lr)
         opt = self._model.optimizer
         scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, self.lr_milestones, gamma=self.lr_gamma)
+
+        self.normalizer = Normalizer(self.d_q_feat, device=self.device)
+        all_q_feats = []
+        for batch in train_loader:
+            all_q_feats.append(batch['q_feat'])
+        full_data = torch.cat(all_q_feats).to(self.device)
+        self.normalizer.fit(full_data)
+        del full_data, all_q_feats
+        print(f"normalizer mean: {self.normalizer.mean.cpu().numpy()} | normalizer std: {self.normalizer.std.cpu().numpy()}")
         
         self._model.train()
         nll_mean = []
@@ -189,6 +211,9 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
                 q_feat_batch = batch['q_feat']
                 h_world_batch = torch.from_numpy(batch["h_world"]).to(self.device)
 
+                q_feat_batch = self.normalizer.normalize(q_feat_batch)
+                # c_feat_batch = self.normalizer.normalize(c_feat_batch) # TODO: when conditioning becomes meaningful, decide if we want to make a self.cond_normalizer for conditioning data
+                
                 # forward: z = f(q; c), log_det = log|det df/dx|
                 z, log_detj = self._model(q_feat_batch, c_feat_batch) # log_j = log absolute determinant of the Jacobian accumulated across the network -> shape [B]
                 assert z.shape[0] == len(q_feat_batch)
@@ -249,14 +274,17 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
                 self._model.eval() # switch model into eval mode - disable dropout, does not update batchnorm, etc. - but does not stop gradient tracking!
                 with torch.no_grad(): # disable autograd within the entire block
                     for batch in val_loader:
+                        q_feat_batch = self.normalizer.normalize(batch['q_feat'])
+                        c_feat_batch = batch['c_feat']
+                        # c_feat_batch = self.normalizer.normalize(batch['c_feat']) # TODO: make sure this matches whatever we do in the training loop
                         h_world_batch = torch.from_numpy(batch["h_world"]).to(self.device)
-                        z, log_detj = self._model(batch['q_feat'], batch['c_feat'])
+                        z, log_detj = self._model(q_feat_batch, c_feat_batch)
                         nll = torch.mean(z ** 2) / 2 - torch.mean(log_detj) / self.d_q_feat
                         fk = torch.zeros_like(nll) # default FK loss is 0
                         if self.lambda_fk > 0.0:
                             # sample z~N, invert to q_hat, penalize fk(q_hat)
                             z_samp = torch.randn_like(z)
-                            q_hat, _ = self._model.reverse(z_samp, batch['c_feat'])
+                            q_hat, _ = self._model.reverse(z_samp, c_feat_batch)
                             fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, h_world_batch, basexy_norm_type=self.basexy_norm_type)
                         loss = torch.mean(nll + self.lambda_fk * fk)
                         
@@ -306,6 +334,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
             q_sample_feat, _ = self._model.reverse(z, c_featb_repeated)
         
         q_sample_feat = q_sample_feat.squeeze(1)
+        q_sample_feat = self.normalizer.unnormalize(q_sample_feat)
         print(f"DEBUG: q_sample_feat.squeeze(1) shape from model: {q_sample_feat.shape}")
         q_sample_feat_np = q_sample_feat.detach().cpu().numpy().astype(np.float32)
         q_sample_world = q_feat_to_world(self.env, q_sample_feat_np, h_world=h_world, basexy_norm_type=self.basexy_norm_type)
@@ -326,10 +355,13 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
                 "d_q_feat": self.d_q_feat,
                 "d_c_feat": self.d_c_feat,
                 "num_blocks": int(self.num_blocks),
+                "num_subnet_blocks": int(self.num_subnet_blocks),
                 "clamp": float(self.clamp),
                 "basexy_norm_type": self.basexy_norm_type,
                 # model param
                 "state_dict": self._model.state_dict(),
+                "normalizer_mean": self.normalizer.mean,
+                "normalizer_std": self.normalizer.std
             },
             path
         )
@@ -346,6 +378,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
             d_q_feat=int(ckpt["d_q_feat"]),
             d_c_feat=int(ckpt["d_c_feat"]),
             num_blocks=int(ckpt["num_blocks"]),
+            num_subnet_blocks=int(ckpt["num_subnet_blocks"]),
             clamp=float(ckpt["clamp"]),
             basexy_norm_type=ckpt['basexy_norm_type'],
             device=device
@@ -370,6 +403,12 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
         model.eval()
 
         sampler._model = model
+
+        sampler.normalizer = Normalizer(int(ckpt['d_q_feat']), device=device)
+        sampler.normalizer.mean = ckpt["normalizer_mean"].to(device)
+        sampler.normalizer.std = ckpt["normalizer_std"].to(device)
+        sampler.normalizer.fitted = True # TODO: not using this -- deprecate?
+
         return sampler
         
     def count_parameters(self):

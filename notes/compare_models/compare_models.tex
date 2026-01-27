@@ -1,0 +1,420 @@
+\documentclass{amsart}
+\usepackage[margin=1in]{geometry}
+
+\usepackage{amsthm, amsmath, amssymb}
+\usepackage[colorlinks]{hyperref}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{hyperref}
+\usepackage{courier}
+\usepackage{tikz}
+\usetikzlibrary{calc,matrix,arrows,decorations.markings}
+\usepackage{array}
+\usepackage{color}
+\usepackage{enumerate}
+\usepackage{nicefrac}
+\usepackage{listings}
+\bibliographystyle{plainurl}
+\usepackage{cite}
+\usepackage{mathtools}
+\usepackage{enumitem}
+
+\newlist{todolist}{itemize}{2}
+\setlist[todolist]{label=$\square$}
+
+\lstset{
+    basicstyle=\small\ttfamily,
+    keywordstyle=\color{blue},
+    language=python,
+    xleftmargin=16pt,
+}
+
+\topmargin=-0.5in
+\headheight=0in
+\pagestyle{plain}
+
+
+% ------   Theorem Styles -------
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{fact}[theorem]{Fact}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{construction}[theorem]{Construction}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{question}[theorem]{Question}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{setup}[theorem]{Setup}
+\theoremstyle{remark}
+\newtheorem*{remark}{Remark}
+
+\setlength{\parindent}{0pt}
+
+
+
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\abss}[1]{\lvert#1\rvert}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\snorm}[1]{\lVert#1\rVert}
+\newcommand{\ang}[1]{\left\langle #1 \right\rangle}
+\newcommand{\floor}[1]{\left\lfloor #1 \right\rfloor}
+\newcommand{\ceil}[1]{\left\lceil #1 \right\rceil}
+\newcommand{\paren}[1]{\left( #1 \right)}
+\newcommand{\sqb}[1]{\left[ #1 \right]}
+\newcommand{\set}[1]{\left\{ #1 \right\}}
+\newcommand{\setcond}[2]{\left\{ #1 \;\middle\vert\; #2 \right\}}
+\newcommand{\cond}[2]{\left( #1 \;\middle\vert\; #2 \right)}
+\newcommand{\sqcond}[2]{\left[ #1 \;\middle\vert\; #2 \right]}
+\newcommand{\one}{\mathbbm{1}}
+\newcommand{\wt}{\widetilde}
+\newcommand{\wh}{\widehat}
+
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\raggedbottom
+
+\title{Comparing Architectures for Reachability}
+\author[]{}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Shared architecture blocks}
+
+\subsection{ResidualBlock}
+``Residual" because in a residual block, the network only has to learn the difference (the ``residual'') between the input and the output: $y = x + f(x)$. If the optimal transformation is just the identity, the weights can just shrink toward zero, and $x$ will pass through untouched.
+
+\subsubsection{Vanishing gradient problem} Residual blocks solve the vanishing gradient problem. In a standard deep network without skip connections, each layer is a function $f(x)$. A deep network looks like: \[y = f_\ell (f_{\ell - 1}(\cdots f_1(x)))\]
+Backprop-derived weight update for the first layer $f_1$:
+\[\frac{\partial \mathcal{L}}{\partial f_1} = \frac{\partial \mathcal{L}}{\partial y} \frac{\partial f_\ell}{\partial f_{\ell - 1}} \cdots \frac{\partial f_{2}}{\partial f_1}\]
+If the weights are small, these derivatives are often $<1$. Multiplying many numbers $<1$ causes the gradient to shrink exponentially, s.t. by the time it reaches the early layers (e.g., $f_1$), the gradient is essentially zero, meaning those layers never learn.
+\vspace{1mm}
+
+\par Residual blocks fix this problem by changing the layer math from $y = f(x)$ to $y = x + f(x)$. Backpropagation for one layer then becomes:
+\[\frac{d}{dx} [x + f(x)] = 1 + \frac{df}{dx}\]
+Because of the +1, the gradient of the loss can flow through the identity path (the skip connection) completely undiminished, regardless of weights in the ``weight path.''
+
+\subsubsection{Number of parameters}
+
+\begin{enumerate}
+    \item LayerNorm(d\_model): 2 parameters
+    \begin{itemize}
+        \item LayerNorm computes the mean $\mu$ and variance $\sigma^2$ across all features of the current sample, and then standardizes this sample's features to have zero mean and unit variance: \[\hat{x}_i = \frac{x_i - \mu}{\sqrt{\sigma^2 + \epsilon}}\]
+        LayerNorm introduces \underline{$2 \cdot \text{d\_model}$} learnable parameters, $\gamma$ and $\beta$, to allow the network to ``undo'' the normalization if it finds that the original distribution was actually better for learning: \[y_i = \gamma \hat{x}_i + \beta\]
+    \end{itemize}
+    \item Linear(d\_model, d\_model): $\text{d\_model} \times \text{d\_model} + \text{d\_model}$ parameters
+    \item SiLU: 0 parameters (activation function) \[\text{SiLU}(x) = x \cdot \sigma(x) = \frac{x}{1+e^{-x}}\]
+    \item Dropout: 0 parameters
+    \item Linear(d\_model, d\_model): $\text{d\_model} \times \text{d\_model} + \text{d\_model}$ parameters
+\end{enumerate}
+
+Total: $\boxed{P_{\text{ResBlock}}(d) = 2 d \cdot (d + 2)}$ parameters
+
+\subsection{ResidualMLP}
+
+\subsubsection{Number of parameters}
+
+\begin{enumerate}
+    \item Input projection: $W_1 : \mathbb{R}^{\text{in\_dim} \times \text{hidden\_dim}} \Rightarrow$ in\_dim $\times$ hidden\_dim + hidden\_dim parameters
+    \item Residual blocks: $W_2 \ldots W_{\text{num\_blocks} + 1}: \text{num\_blocks} \times P_{\text{ResBlock}}(d=\text{hidden\_dim})$ parameters
+    \item Output projection: LayerNorm(hidden\_dim) + SiLU + Linear(hidden\_dim, out\_dim) = 2 $\times$ hidden\_dim + hidden\_dim $\times$ out\_dim + out\_dim parameters
+\end{enumerate}
+Denoting in\_dim = $d_{\text{in}}$, out\_dim = $d_{\text{out}}$, z\_dim = $d_z$, hidden\_dim = $d_h$, and num\_blocks = $n_b$:
+\[\text{Total parameters: } \boxed{P_{\text{ResMLP}}(d_\text{in}, d_h, d_\text{out}, d_z, n_b) = d_h(d_{\text{in}} + 2n_b(d_h + 2) + d_\text{out} + 3)+ d_\text{out}}\]
+
+\section{Conditional VAE}
+
+\subsection{Architecture}
+
+\begin{itemize}
+    \item Encoder: ResidualMLP(in\_dim = d\_c\_feat + d\_q\_feat, hidden\_dim = hidden\_dim, out\_dim = 2 $\cdot$ z\_dim, num\_blocks = num\_blocks) \[E: \begin{bmatrix}
+        C_{\text{feat}}\\ Q_{\text{feat}}
+    \end{bmatrix} \rightarrow \begin{bmatrix}
+        \hat{\mu}(z) \\ \hat{\text{logvar}}(z)
+    \end{bmatrix}\]
+    Given feature vector $Q_{\text{feat}}$ and conditioning vector $C_\text{feat}$ for some data point $x$, the encoder produces a normal distribution $q(z \mid C_{\text{feat}}, Q_{\text{feat}})$. 
+    \item Decoder: ResidualMLP(in\_dim = d\_c\_feat + z\_dim, hidden\_dim = hidden\_dim, out\_dim = 2 $\cdot$ d\_q\_feat, num\_blocks = num\_blocks)
+    \[D: \begin{bmatrix}
+        C_{\text{feat}} \\ z
+    \end{bmatrix} \rightarrow \begin{bmatrix}
+         \hat{\mu}(Q_{\text{feat}}) \\ \hat{\text{logvar}}(Q_{\text{feat}})
+    \end{bmatrix}\]
+    Given latent vector $z$ and conditioning vector $C_\text{feat}$, the decoder produces a normal distribution $q(Q_\text{feat} \mid C_{\text{feat}}, z)$ (plausible $Q_\text{feat}$'s that would correspond to latent $z$ given $C_\text{feat}$). \textcolor{blue}{Would it be possible for the decoder to output a mixture of Gaussians instead?}
+    \item VAE: \[\text{Data point}\,\, (q, c, h) \xlongrightarrow{\text{featurize}} q_\text{feat}, c_\text{feat} \xlongrightarrow{E} \hat{\mu}(z), \hat{\text{logvar}}(z) \Rightarrow z \sim \mathcal{N}(\hat{\mu}(z), \hat{\text{logvar}}(z)) \]
+    \[z, c_\text{feat}\xlongrightarrow{D} \hat{\mu}(q_{\text{feat}}),  \hat{\text{logvar}}(q_{\text{feat}}) \Rightarrow \boxed{\hat{q}_\text{feat}} \sim \mathcal{N}(\hat{\mu}(q_{\text{feat}}), \hat{\text{logvar}}(q_{\text{feat}}))\]
+\end{itemize}
+
+\subsubsection{Sampling}
+To sample from the cVAE, we only use the decoder portion: 
+\[h_\text{world}, c_\text{feat}, z \sim \mathcal{N}(0, 1) \xlongrightarrow{D} \hat{\mu}(q_\text{feat}), \hat{\text{logvar}}(q_{\text{feat}}) \Rightarrow \hat{q}_\text{feat} \sim \mathcal{N}(\hat{\mu}(q_\text{feat}), \hat{\text{logvar}}(q_{\text{feat}}))\]
+\subsubsection{Number of parameters}
+\begin{itemize}
+    \item Encoder: $P_\text{ResMLP}(d_{\text{in}} = d_{cf} + d_{qf}, d_h = d_h, d_\text{out} = 2d_z, n_b = n_b)$ where $d_{cf}$ = d\_c\_feat and $d_{qf}$ = d\_q\_feat. \[P_{\text{enc}} = d_h ((d_{cf} + d_{qf}) + 2n_b (d_h + 2) + 2z + 3) + 2z\]
+    \item Decoder: $P_\text{ResMLP}(d_{\text{in}} = d_{cf} + d_{z}, d_h = d_h, d_\text{out} = 2d_{qf}, n_b = n_b)$
+    \[P_\text{dec} = \boxed{d_h ((d_{cf}  + d_z) + 2n_b (d_h + 2) + 2d_{qf} + 3 ) + 2d_{qf}}\]
+\end{itemize}
+
+Only the decoder participates in generation, so we have only $P_\text{dec}$ parameters at inference.
+
+\subsection{Loss function}
+\begin{itemize}
+    \item Reconstruction loss $\mathcal{L}_{\text{NLL}}$: \[\mathcal{L}_{\text{NLL}} = - \log [p(q_\text{feat} \mid \hat{\mu}(q_\text{feat}), \hat{\sigma}(q_\text{feat})^2)]\]
+    where $q_\text{feat}$ is obtained from featurizing a true data point $q$, and $\hat{\sigma}(q_\text{feat})^2)$ are outputted by the VAE. Aka, we want the model to predict a Gaussian that tightly centers around the true $q_\text{feat}$
+    \item KL loss $\mathcal{L}_{\text{KL}}$: \[\mathcal{L}_{\text{KL}} = D_{\text{KL}}(\mathcal{N}(\hat{\mu}(z), \hat{\sigma}(z)^2) \, || \, \mathcal{N}(0, 1))\]
+    Aka., we want the latent distribution over $z$ to resemble that of a standard Gaussian.
+    \item Forward kinematics MSE loss:
+    \[ ||\text{FK}(\hat{\mu}(q_\text{feat})) - h||^2_2\]
+    where $h$ is the ground truth end effector target paired with $q$ (that was fed through VAE to obtain model estimate $\hat{\mu}(q_\text{feat})$). 
+\end{itemize}
+
+Combined:
+\[\mathcal{L} = \mathcal{L}_{\text{NLL}} + \beta \cdot \mathcal{L}_{\text{KL}} + \lambda_k \cdot \mathcal{L}_{\text{fk\_mse}}\]
+
+\subsection{Strengths vs. weaknesses}
+
+\subsubsection{Strengths}
+
+\subsubsection{Weaknesses}
+
+\subsection{Empirical performance}
+
+\subsubsection{2D 2-link rotary arm robot}
+
+
+\section{Conditional INN (normalizing flow)}
+
+\subsection{Architecture}
+
+\subsubsection{Subparts}
+\begin{itemize}
+    \item Subnet: ResidualMLP(in\_dim, hidden\_dim, out\_dim, num\_blocks) \[S: \begin{bmatrix}
+        C_\text{feat} \\ \tfrac 12 Q_\text{feat}
+    \end{bmatrix} \rightarrow \begin{bmatrix}
+        s \\ t
+    \end{bmatrix}\]
+    Given half of feature vector $Q_\text{feat}$ (coupling block splits the input into two halves) and conditioning vector $C_\text{feat}$, the subnet predicts affine transformation parameters (scaling and translation). The subnet is the internal neural network used within the coupling blocks.
+
+    \item Conditioning node provides the context $C_{\text{feat}}$ to every coupling block in the network.
+    \item Coupling blocks: ($\times$ num\_blocks)
+    \begin{enumerate}
+        \item Permuting node: Shuffles the dimensions to ensure all features interact.
+        \item ActNorm: $y = s \odot x + b$ where $s$ is the scale vector and $b$ is the bias vector. Both have the same dimensionality as the number of features = d\_q\_feat.
+        \begin{itemize}
+            \item LayerNorm: Across the features, for each sample, calculate $\mu$ and $\sigma^2$ using all features of that sample. 
+            \item ActNorm: Initialize $s$ and $b$ by computing the mean and variance of the first batch. For every subsequent batch, $s$ and $b$ are treated as regular trainable parameters, so $y_i = s_i \cdot x_i + b_i \Rightarrow$ $y_i$ does not look at $x_{i+1}$ or $x_j$, so the Jacobian matrix of ActNorm is diagonal. 
+        \end{itemize}
+        Normalizing flows use ActNorm instead of LayerNorm because LayerNorm makes the Jacobian dense: in LayerNorm, every feature in the output depends on every feature in the input.
+        \item Affine coupling: 
+        
+        \begin{itemize}
+            \item \textbf{Vanilla affine coupling:} Splits the input into two halves $\left(Q_\text{feat}^{(1)}, Q_\text{feat}^{(2)}\right) \coloneq (q_1, q_2)$. One half remains unchanged, while the other is transformed: \begin{align*}
+            q_1' &= q_1 \\
+            q_2' &= q_2 \odot \exp(s(q_1, C_\text{feat})) + t(q_1, C_\text{feat})
+        \end{align*}
+
+        \item \texttt{Fm.GLOWCouplingBlock} \textbf{affine coupling:} \textcolor{cyan}{Important note:} GLOWCouplingBlock spawns \textit{two distinct sub-networks} to predict two sets of affine transformation parameters every coupling block layer. It splits the input into $(q_1, q_2)$ and applies a two-step alternating update:
+        \begin{align*}
+            q_2' &= q_2 \odot \exp(s_1(q_1, C_\text{feat})) + t_1(q_1, C_\text{feat} \\
+            q_1' &= q_1 \odot \exp(s_2(s_2', C_\text{feat})) + t_2(q_2', C_\text{feat}
+        \end{align*}
+
+        \textcolor{cyan}{We use GLOWCouplingBlock in our implementation.}
+        \end{itemize}
+    \end{enumerate}
+\end{itemize}
+
+\subsubsection{Compiled architecture}
+
+Essentially, each layer with a coupling block applies a learned affine transformation to some permutation of the full input feature vector. The permutations are deterministic across training and inference: every time the model sees a sample, the ``shuffle" for block $k$ is identical, allowing the subnets to learn which specific dimensions of the input vector cotnain the information needed to predict the scaling and translation for other dimensions. The full transformation is the combined effect of all these affine transformations: all layers $f_i$ compile into invertible function $f$:
+\[f = f_k \circ \ldots \circ f_2 \circ f_1\]
+
+Every $f_i$ (total num\_blocks number of $f_i$) consists of:
+    \begin{itemize}
+        \item Permutations
+        \item ActNorm
+        \item Coupling block (ResidualMLP)
+    \end{itemize}
+
+$\uparrow$ Forward mapping:
+\[f: (q_\text{feat}, c_\text{feat}) \rightarrow (z, \log |\det J|)\]
+\begin{itemize}
+    \item $z \sim \mathcal{N}(0, I)$ is encouraged during training.
+\end{itemize}
+Reverse mapping (generation/sampling):
+\[f^{-1}: (z, c_\text{feat}) \rightarrow q_\text{feat}\]
+\begin{itemize}
+    \item $f^-1$ is definitely derivable from $f$ because the network for $f$ was designed to be invertible.
+\end{itemize}
+To sample a robot configuration $q_\text{feat}$ given conditional vector $c_\text{feat}$: 
+\[z \sim \mathcal{N}(0, I) \Rightarrow \boxed{\hat{q}_\text{feat}} = f^{-1} (z, c_\text{feat})\]
+
+\subsubsection{Number of parameters}
+
+Each invertible block involves:
+    \begin{itemize}
+        \item ActNorm(d\_q\_feat): $2d_{qf}$ parameters
+        \begin{itemize}
+            \item \texttt{nodes.append(Ff.Node(nodes[-1], Fm.ActNorm, \{\}))} applies ActNorm to the data path only (not the conditioning node).
+        \end{itemize}
+        \item GLOWCouplingBlock(d\_c\_feat + d\_q\_feat): 2 $\times$ ResidualMLP(in\_dim = d\_c\_feat + d\_q\_feat/2, hidden\_dim = hidden\_dim, out\_dim = $2 \cdot (\text{d\_q\_feat}/2)$, num\_blocks = num\_subnet\_blocks [$\coloneq n_{snb}$]) 
+        \begin{itemize}
+            \item Subnet outputs $s$ and $b$ $\Rightarrow$ $2 \cdot (\text{d\_q\_feat} / 2) = $ d\_q\_feat
+        \end{itemize}
+        \begin{align*}
+            P_\text{subnet} &= P_\text{ResMLP}(d_\text{in} = d_{cf} + 0.5 d_{qf}, d_h = d_h, d_\text{out} = d_{qf}, n_b = n_{snb}) \\
+            &= d_h (d_{cf} + 1.5 d_{qf} + 2n_{snb} (d_h + 2)+ 3)+ d_{qf} \\
+            P_\text{GLOW} &= 2 \cdot P_\text{subnet}
+        \end{align*}
+    \end{itemize}
+
+Total parameters: 
+\[
+P_{\text{cINN}} = \underbrace{n_b}_{\text{Blocks}} \cdot \left[ \underbrace{2d_{qf}}_{\text{ActNorm}} + \underbrace{2}_{\substack{\text{GLOW} \\ \text{Multiplier}}} \cdot \left( \underbrace{d_h(d_{cf} + 0.5d_{qf} + 2n_{snb}(d_h + 3) + 3) + d_{qf}(d_h + 2)}_{\text{Subnet (ResidualMLP)}} \right) \right]
+\]
+
+\subsection{Loss function}
+
+\begin{itemize}
+    \item NLL loss: We want to optimize the model to predict maximal probability for true data points, i.e. maximize $p_X(x)$. If $z = f_\theta(x)$ and $f_\theta$ is bijective (invertible) and differentiable, densities transform via:
+    \[p_X(x) = p_Z(f_\theta(x)) \cdot \bigg|\det \frac{\partial f_\theta}{\partial x}\bigg|\]
+    Intuition behind this equation for $p_X(x)$: to maximize $p_X(x)$, we can either increase $p_Z(f_\theta(x))$ (map $x$ to the center of the Gaussian) and/or make $|\det \tfrac{\partial z}{\partial x}|$ large, i.e. make it s.t. a small change in $x$ leads to a large change in $z$ (expand $z$ coordinates s.t. $x$ covers a larger portion of the Gaussian's probability mass). 
+    \vspace{1mm}
+    Taking negative log: 
+    \[-\log p_X(x) = -\log p_Z(z) - \log | \det J_f(x)|  \qquad z= f_\theta (x), J_f(x)= \frac{\partial f_\theta (x)}{\partial x}\]
+    If $p_Z = \mathcal{N}(0, I)$, then $-\log p_Z(z) = \tfrac 12 ||z||^2 + \text{const}$. The goal is to model an invertible function from $p_Z \mapsto p_X$ s.t. $p_X(x) = p_Z(f_\theta(x))$ is big for real data $x$ and small/near-zero for data points outside of the true data distribution. Thus, the training objective per sample (real data point $x$) becomes:
+    \[\mathcal{L}_{\text{NLL}} = \tfrac 12 ||z||^2 - \log |\det J_f(x)| + \text{const}\]
+    Minimizing this loss is equivalent to maximizing $p_X(x)$. 
+    \begin{itemize}
+        \item \textit{What prevents the model from assigning high probability to the entire space?} We want to maximize $p_X(x)$, but we also want to minimize $p_X(y \notin X)$. The NLL objective appears to only enforce maximizing $p_X(x)$!
+        \begin{itemize}
+            \item The ``pressure'' on the model to avoid assigning high probability everywhere comes from the incompressibility of probability: by definition, a PDF must integrate to 1: \[\int p_X(x)\, dx = 1\]
+            Because the total area under the curve is fixed at 1, probability is a finite resource: if the model increases the probability $p_X(x)$ for a true sample, it \textit{must} decrease the probability somewhere else. 
+            \item $\uparrow$ The Jacobian term enforces this incompressibility of probability in the loss function: $|\det J|$ measures how much the function $f_\theta$ stretches or compresses space at point $x$.
+            \begin{itemize}
+                \item To increase probability: The model needs to ``squeeze'' the space around a true data point $x$ so that a blob in the $X$ (bubble of feasible configs around $x$) space maps to a very small, high-density region in the $Z$ (latent) space (near the origin, where the Gaussian $p_Z$ is highest).
+                \item The model cannot ``squeeze'' the entire input space to the origin to give everything high probability, because space is finite. The model is a bijection, so it has to map the ``empty'' spaces in the data distribution to the ``empty'' (low-density) tails of the Gaussian distributionn. Expanding one region of probability space entails compressing another region. This prevents the model from predicting high probability for everything!
+            \end{itemize}
+        \end{itemize}
+    \end{itemize}
+    \item Forward kinematics MSE: Using the current state of the model $f$ to predict $\hat{q} = f^{-1}(z, c)$ (where $z \sim \mathcal{N}(0, I)$), we can compute \[||\text{FK}(\hat{q}) - h||^2_2\]
+    for data points $(q, c, h)$.
+\end{itemize}
+Combined loss:
+\[\mathcal{L} = \mathcal{L}_{\text{NLL}} + \lambda_k \mathcal{L}_{\text{fk\_mse}}\]
+
+\subsection{Strengths vs. weaknesses}
+
+\subsection{Empirical performance}
+
+\section{Conditional diffusion}
+
+\subsection{Architecture}
+
+The model architecture, ResMLPDenoiser, is used to model $\epsilon_\theta(x, t)$ (predict noise $\epsilon_t$ given $x_t, t$, allowing us to define $p_\theta (x_{t-1} \mid x_t)$ and denoise by one step). 
+
+\vspace{1mm}
+
+ResMLPDenoiser consists of a MLP (2 linear layers with Mish activation) for processing sinusoidal time embeddings and a ResidualMLP that inputs the processed time embeddings + $q_{\text{feat}}$ + $c_\text{feat}$ to output the predicted noise $\epsilon$. Here, in usual diffusion moidel notation, $x = (q_\text{feat}, c_\text{feat})$. 
+
+
+\subsubsection{Number of parameters}
+
+\begin{enumerate}
+    \item Time embedding: time\_dim = $d_t$ = hidden\_dim // 4
+    \begin{itemize}
+        \item Linear layer: $d_t \times 2d_t + 2d_t$
+        \item Mish layer: Activation $f(x) = x \cdot \tanh (\ln (1+ e^x))$
+        \begin{itemize}
+            \item Mish is slower than SiLU (Swish), but is ``smoother'' in its top-order derivatives (which is cited as the reason it helps with training stability in very deep architectures)
+        \end{itemize}
+        \item Linear layer: $2d_t \times d_t + d_t$
+    \end{itemize}
+    \item ResidualMLP(in\_dim = $d_q + d_c + d_t$, hidden\_dim = $d_h$, out\_dim = $d_q$, num\_blocks = $n_b$, dropout = dropout)
+\end{enumerate}
+
+Total parameters: 
+\begin{align*}
+    P_{\text{cDiff}} = \boxed{\underbrace{4d_t^2 + 3d_t}_{\text{Time MLP}} + \underbrace{d_h (2d_{qf} + d_{cf} + d_t + 2n_b (d_h + 2) + 3) + d_{qf}}_{\text{ResidualMLP}}}
+\end{align*}
+
+\subsection{Loss function}
+
+Using lots of algebra, we can show that ELBO loss for maximizing the log-likelihood of the data $\log p_\theta (x_0)$ ends up being proportional to noise MSE:
+\[\mathcal{L} \propto ||\epsilon - \epsilon_\theta(x_t, t)||^2\]
+
+We train on this MSE loss. 
+
+
+\subsection{Strengths vs. weaknesses}
+
+\subsection{Empirical performance}
+
+
+\section{Comparing architectures}
+
+\subsection{Number of parameters}
+
+Total number of parameters in the model:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|}
+\hline
+\textbf{Model} & \textbf{Total parameter count} \\ \hline
+\textbf{cVAE} & $d_h \big( (d_{cf} + d_{qf}) + 2n_b(d_h + 2) + 2d_z + 3 \big) + 2d_z + d_h \big( (d_{cf} + d_z) + 2n_b(d_h + 2) + 2d_{qf} + 3 \big) + 2d_{qf}$ \\ \hline
+\textbf{cINN} & $n_b \cdot \left[ 2d_{qf} + 2 \cdot \left( d_h(d_{cf} + 0.5d_{qf} + 2n_{snb}(d_h + 3) + 3) + d_{qf}(d_h + 2) \right) \right]$ \\ \hline
+\textbf{cDiffusion} & $(4d_t^2 + 3d_t) + d_h \big( 2d_{qf} + d_{cf} + d_t + 2n_b(d_h + 2) + 3 \big) + d_{qf}$ \\ \hline
+\end{tabular}
+\end{table}
+
+Counting only parameters available at inference:
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|}
+\hline
+\textbf{Model} & \textbf{Inference-only parameter count} \\ \hline
+\textbf{cVAE} & $d_h ((d_{cf}  + d_z) + 2n_b (d_h + 2) + 2d_{qf} + 3 ) + 2d_{qf}$ \\ \hline
+\textbf{cINN} & $n_b \cdot \left[ 3d_{qf} + d_h \big( d_{cf} + 1.5d_{qf} + 2n_{snb}(d_h + 2) + 3 \big) \right]$ \\ \hline
+\textbf{cDiffusion} & $(4d_t^2 + 3d_t) + d_h \big( 2d_{qf} + d_{cf} + d_t + 2n_b(d_h + 2) + 3 \big) + d_{qf}$ \\ \hline
+\end{tabular}
+\end{table}
+
+
+\section{Problem Description}
+
+Our goal is to learn \textit{where the robot should stand} given a desired grasp. 
+
+\subsection{Problem inputs} Formulating the problem, we are given as inputs:
+\begin{itemize}
+    \item $x_e \in SE(3)$: desired end-effector pose in world coordinates
+    \item $b \in SE(2)$: wheeled mobile base pose $(x, y, \gamma)$
+    \item $q \in \mathbb{R}^n$: arm joint configuration.
+\end{itemize}
+
+\subsection{Problem outputs} We want to find a range of feasible whole-body configurations that satisfy the following requirements:
+\begin{enumerate}
+    \item \textbf{IK feasibility:} $\text{forward kinematics}(b, q) = x_e$
+    \item \textbf{Visibility/sensing constraints:} The end-effector should lie within the camera's field of view and range (and un-occluded by the robot itself), i.e. $\text{visible}(b, q, x_e) = 1$
+    \item \textbf{Ball of feasible configurations:} We want a region in joint space around $(b,q)$ that keeps the hand in approximately the right pose and satisfies the above constraints. 
+\end{enumerate}
+
+Our target is to model some distribution $p(b, q\mid x_e)$ subject to these constraints $\uparrow$, ideally with some notion of pose quality (visibility, manipulability, clearance, etc.). 
+
+
+% \pagebreak
+% \bibliographystyle{plain} % or another style you prefer
+% \bibliography{reachability_references}       % Note: No need to include the .bib extension
+
+\end{document}

@@ -15,22 +15,23 @@ env:
     hy_max:  2.0
 
 data:
-  n_train: 100000 # was 20000
-  n_test:  10000
+  n_train: 20000 # was 20000
+  n_test:  2000
 
 model:
   name: "cvae"
   type: "resMLP"
   z_dim: 6
   hidden_dim: 512
-  num_blocks: 5
+  num_enc_blocks: 4
+  num_dec_blocks: 16
   # enc_hidden: [128, 128, 128, 128, 128, 128]
   # dec_hidden: [128, 128, 128, 128, 128, 128]
   lr: 0.001
-  lambda_fk: 0.5
+  lambda_fk: 0
   batch_size: 256
   
-  epochs: 200
+  epochs: 300
   beta: 1.0
   device: "cpu" # set "cuda" if available
 
