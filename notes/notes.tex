@@ -110,13 +110,140 @@ Our goal is to learn \textit{where the robot should stand} given a desired grasp
 
 Our target is to model some distribution $p(b, q\mid x_e)$ subject to these constraints $\uparrow$, ideally with some notion of pose quality (visibility, manipulability, clearance, etc.). 
 
-\section{3D robot v2: LeKiwi robot}
+% \section{3D robot v2: LeKiwi robot}
 
-\section{3D robot v1: Round $(x,y, \psi)$ base with a rotary 2-link arm}
+\section{2D robot v3: Point $(x,y, \psi)$ base with a rotary 3-link arm}
 
 \subsection{Setup}
+\begin{itemize}
+    \item Robot base configuration: $(x, y, \psi)$ where $\psi \in [0, 2\pi)$ is some arbitrary base heading (robot does \textit{not} need to be facing the target)
+    \item Robot arm configuration: $(\theta_1, \theta_2, \theta_3)$
+    \item Target pose specification: $(h_x, h_y, \phi)$ (vector with tip at $(h_x, h_y)$ and heading $\phi$)
+\end{itemize}
+
+Complete robot configuration specification:
+\[(x, y, \psi, \theta_1, \theta_2, \theta_3) \in \mathbb{R}^6\]
 
 
+\subsubsection{Data generation pipeline}
+\begin{center}
+    \textcolor{cyan}{\textsc{The Math}}
+\end{center}
+The goal is to generate a data sampling pipeline for pairs $(q, h)$ where:
+\[q = (x, y, \theta_1, \theta_2, \theta_3) \in \mathbb{R}^6 \qquad h = (h_x, h_y, \phi) \in \mathbb{R}^3\]
+
+Defining some math: Let $R(\alpha) \in \mathbb{R}^{2 \times 2}$ be planar rotation:\[R(\alpha) = \begin{bmatrix}
+    \cos \alpha & - \sin \alpha \\ \sin \alpha & \cos \alpha
+\end{bmatrix}\]
+Represent a planar pose $(p, \alpha)$ with $p \in \mathbb{R}^2$ as the following transform: \[T(p, \alpha) = \begin{bmatrix}
+    R(\alpha) & p \\ 0 \quad 0  & 1 
+\end{bmatrix} \in SE(2)\]
+Transform inverse:
+\[T(p, \alpha)^{-1} = \begin{bmatrix}
+    R(\alpha)^\top & - R(\alpha)^\top p \\ 0 \quad 0 & 1
+\end{bmatrix}\]
+
+Using the introduced notation, we define the frame of the base in the world as:\[T_{WB} = T\left(\begin{bmatrix}
+    x \\ y
+\end{bmatrix}, \psi\right)\]
+
+Using forward kinematics, for a 3-link planar arm with link lengths $L_1, L_2, L_3 > 0$ and cumulative angles $\alpha_1 = \theta_1, \alpha_2 = \theta_1 + \theta_2, \alpha_3 = \theta_1 + \theta_2 + \theta_3$, we have the following end-effector position in the base frame:
+\[p_{BE} (\theta) = \begin{bmatrix}
+    L_1 \cos \alpha_1 + L_2 \cos \alpha_2 + L_3 \cos \alpha_3 \\
+    L_1 \sin \alpha_1 + L_2 \sin \alpha_2 + L_3 \sin \alpha_3
+\end{bmatrix}\]
+The end-effector heading in base frame is:\[\phi_{BE}(\theta) = \alpha_3\]
+So the base-to-EE transform is:
+\[T_{BE}(\theta) = T(p_{BE}(\theta), \phi_{BE}(\theta))\]
+
+World end-effector transform (forward kinematics):
+\[T_{WE} = T_{WB} T_{BE}(\theta)\]
+
+The target label is the end-effector pose:
+\[H = (h_x, h_y, \phi) \iff T_{WH} = T\left(\begin{bmatrix}
+    h_x \\h_y
+\end{bmatrix}, \phi\right)\]
+
+The kinematic constraint that the end-effector pose = target pose can be written as:
+\[T_{WH} = T_{WE} = T_{WB} T_{BE}(\theta)\]
+Solving for the base pose:
+\[T_{WB} = T_{WH} T_{BE}(\theta)^{-1}\]
+So, to generate $(Q, H)$ data points, we can sample $\theta$, sample a target $H$, and compute the base pose by one matrix inverse. 
+\vspace{1mm}
+Math-ing out the above: Let $p_H = \begin{bmatrix}
+    h_x \\ h_y
+\end{bmatrix}$, and define:
+\[p_{BE} = p_BE(\theta), \quad \phi_{BE} = \phi_{BE}(\theta) = \theta_1 + \theta_2 + \theta_3\]
+
+Since $T_{BE}^{-1}$ has rotation $-\phi_{BE}$ and translation $-R(\phi_{BE})^\top p_{BE}$, composing gives:
+\[\text{Base heading: }\psi = \phi - \phi_{BE} \qquad \text{Base position: }\begin{bmatrix}
+    x \\ y
+\end{bmatrix} = p_H - R(\psi)p_{BE}\]
+So given $(H = [h_x, h_y, \phi], \theta = [\theta_1, \theta_2, \theta_3])$, base pose $(x,y, \psi)$ is uniquely determined. 
+
+\begin{center}
+    \textcolor{cyan}{\textsc{The Pipeline}}
+\end{center}
+
+Inputs/hyperparameters:
+\begin{itemize}
+    \item Link lengths $L_1, L_2, L_3$
+    \item Joint distributions with limits: \[\theta_1 \sim \text{Unif}[a_1, b_1], \theta_2 \sim \text{Unif}[a_2, b_2], \theta_3 \sim \text{Unif}[a_3, b_3] \Leftarrow \mathcal{D}_\theta \]
+    \item Target sampling distribution: we will assume uniform end-effector position and heading across the workspace \[h_x, h_y \sim \text{Unif}([-w, w]^2), \quad \phi \sim \text{Unif}[0, 2\pi)\Leftarrow \mathcal{D}_H\]
+\end{itemize}
+
+Pipeline:
+\begin{enumerate}
+    \item Sample arm angles: $\theta = (\theta_1, \theta_2, \theta_3) \sim \mathcal{D}_\theta$
+    \item Compute FK in base frame:\[p_{BE}(\theta) = \begin{bmatrix}
+        \sum_{i=1}^3 L_i \cos \left(\sum_{j=1}^i \theta_j\right) \\
+        \sum_{i=1}^3 L_i \sin \left(\sum_{j=1}^i \theta_j\right)
+    \end{bmatrix}, \qquad \phi_{BE}(\theta) = \theta_1 + \theta_2 + \theta_3\]
+    \item Sample a target pose: $H = (h_x, h_y, \phi) \sim \mathcal{D}_h$. Define $p_H = [h_x, h_y]^\top$. 
+    \item Solve base pose by inversion:\[\psi = \text{wrap}_{2\pi} (\phi - \phi_{BE}(\theta)), \quad \begin{bmatrix}
+        x \\y
+    \end{bmatrix} = p_H - R(\psi) p_{BE}(\theta)\]
+    \item Final configuration vector: $Q = (x, y, \psi, \theta_1, \theta_2, \theta_3)$. Store the pair $(Q, H)$, and repeat until you have $N$ samples. 
+\end{enumerate}
+TL;DR: For $i = 1, \ldots, N$, we sample from the joint $(\theta, H)\sim \mathcal{D}_\theta \times \mathcal{D}_H$:
+\begin{enumerate}
+    \item Sample $\theta^{(i)} \sim \mathcal{D}_\theta$
+    \item Sample $H^{(i)} \sim \mathcal{D}_H$ 
+    \item Deterministically compute $Q^{(i)} = f(\theta^{(i)}, H^{(i)})$
+\end{enumerate}
+\subsubsection{Featurization}
+Defining $R = L_1 + L_2 + L_3$ (robot reach),
+\begin{align*}
+    Q &= (x, y, \psi, \theta_1, \theta_2, \theta_3)  \mapsto \\
+    &\boxed{Q_{\text{feat}} = \left(\frac{\tilde{\Delta}_x}{R}, \frac{\tilde{\Delta}_y}{R}, \cos(\tilde{\psi}), \sin(\tilde{\psi}), \cos(\theta_1), \sin(\theta_1), \cos(\theta_2), \sin(\theta_2), \cos(\theta_3), \sin(\theta_3)\right)} \in \mathbb{R}^{10}\\
+H &= (h_x, h_y, \phi), C = (\ldots) \mapsto \boxed{C_\text{feat} = (0, 0)}  \in \mathbb{R}^2
+\end{align*}
+where
+\[
+    \tilde{\Delta} = R(-\phi) \cdot \begin{bmatrix}
+        x - h_x \\ y - h_y 
+    \end{bmatrix} \qquad
+    \tilde{\psi} = \psi - \phi
+\]
+
+The featurization here canonicalizes the target: we take the robot's world-frame coordinates $(x,y, \psi)$ and re-describe them from the target-frame. 
+\[\Delta_\text{world} = \begin{bmatrix}
+    x - h_x \\ y - h_y
+\end{bmatrix}\]
+
+This vector tells us how far the robot is from the target in the orientation of the room. To align the world with the target's heading, we multiply $\Delta_\text{world}$ with the inverse of the rotation matrix of the target's heading: this way, the target's heading becomes the new $0^\circ$. 
+
+\begin{center}
+    \includegraphics[scale=0.5]{diagrams/q_feat canonicalization fig.png}
+\end{center}
+
+In addition, we featurize $\tilde{\psi} = \psi - \phi$ to extract the relative angle between the robot base heading and the target heading: this relative angle is what matters to the model when deciding reachability (the compass of the world frame does not affect the relative relationship between robot and target). We see this transformation in the figure below:
+\begin{center}
+    \includegraphics[scale=0.4]{diagrams/q_feat canonicalization psi.png}
+\end{center}
+
+
+\subsection{Evaluation metrics}
 
 \section{Simplified problem v2.1: Round thing with a rotary 2-link arm, generalizable to different workspace sizes}
 

@@ -2,8 +2,11 @@
 - Rotary link with joint limits
 
 
+## Excavator 3D robot setup?
 
-
+![[types of joints.png]]
+(Rotary = Revolute)
+- Rotary joints allow 1DoF (rotation around fixed axis)
 
 ## Rotary link robot setup
 ### 2-link planar arm on base $(x, y)$ with no joint limits

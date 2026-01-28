@@ -1,14 +1,14 @@
 # Fdb version 4
-["bibtex notes"] 1769480792 "notes.aux" "notes.bbl" "notes" 1769519183 0
+["bibtex notes"] 1769558504 "notes.aux" "notes.bbl" "notes" 1769558505 0
   "./reachability_references.bib" 1767575372 9451 a555a2bc6ef2278ce59a23b5f070091e ""
   "/usr/local/texlive/2023/texmf-dist/bibtex/bst/base/plain.bst" 1292289607 20613 bd3fbfa9f64872b81ac57a0dd2ed855f ""
-  "notes.aux" 1769519182 9512 cc4e40225272e253dcb72fa2c4900c78 "pdflatex"
+  "notes.aux" 1769558505 9811 6c9a1d4706df343d6cfa02c243291573 "pdflatex"
   (generated)
   "notes.bbl"
   "notes.blg"
   (rewritten before read)
-["pdflatex"] 1769519182 "/Users/niu/projects/reachability_tests/notes/notes.tex" "notes.pdf" "notes" 1769519183 0
-  "/Users/niu/projects/reachability_tests/notes/notes.tex" 1769519181 59671 04d8234b6b88ed207f2c55525c34038c ""
+["pdflatex"] 1769558504 "/Users/niu/projects/reachability_tests/notes/notes.tex" "notes.pdf" "notes" 1769558505 0
+  "/Users/niu/projects/reachability_tests/notes/notes.tex" 1769558503 66429 f70db1d78ce0c91c2a510072da4c0c7e ""
   "/usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/local/texlive/2023/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2023/texmf-dist/fonts/tfm/adobe/courier/pcrr7t.tfm" 1136768653 960 379cc0019370a9e0208a0a3f949f847a ""
@@ -204,11 +204,13 @@
   "/usr/local/texlive/2023/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1694645518 4623355 b8cad38412faebe1ce5b780a45db67bd ""
   "/usr/local/texlive/2023/texmf-var/web2c/pdftex/pdflatex.fmt" 1694645474 7883456 4098c4c6c312f18afe3dd0ee5dbb5a39 ""
   "/usr/local/texlive/2023/texmf.cnf" 1678822455 577 1b2b1af17af2508fb20dd85783af4050 ""
-  "notes.aux" 1769519182 9512 cc4e40225272e253dcb72fa2c4900c78 "pdflatex"
-  "notes.bbl" 1769480792 348 bbfe71699a21a2578cafe32b15286822 "bibtex notes"
-  "notes.out" 1769519182 6663 40fdb3f5736bf805a9f09ee051218537 "pdflatex"
-  "notes.tex" 1769519181 59671 04d8234b6b88ed207f2c55525c34038c ""
-  "notes.toc" 1769519182 5577 da3d667dedc408279f6a999b475b2ee0 "pdflatex"
+  "diagrams/q_feat canonicalization fig.png" 1769558097 36389 7b1b88b0338544d37bbfe0b533bb31b1 ""
+  "diagrams/q_feat canonicalization psi.png" 1769558478 36095 c607ab28bd947cbdcfe7b03710cda1d8 ""
+  "notes.aux" 1769558505 9811 6c9a1d4706df343d6cfa02c243291573 "pdflatex"
+  "notes.bbl" 1769558504 348 bbfe71699a21a2578cafe32b15286822 "bibtex notes"
+  "notes.out" 1769558505 6643 56020c2859e6a35122d2f737475e1cb9 "pdflatex"
+  "notes.tex" 1769558503 66429 f70db1d78ce0c91c2a510072da4c0c7e ""
+  "notes.toc" 1769558505 5794 8ea4ef55b42ac4dc4ac5299748c7c641 "pdflatex"
   (generated)
   "notes.aux"
   "notes.log"

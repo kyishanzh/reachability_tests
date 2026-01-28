@@ -10,7 +10,8 @@ import time
 from pathlib import Path
 
 from reachability.utils.utils import set_seed, print_results
-from reachability.envs.simple import SimpleEnv, Workspace2D
+from reachability.envs.workspace import Workspace2D
+from reachability.envs.simple import SimpleEnv
 from reachability.envs.rotary_link import RotaryLinkEnv
 from reachability.data.datasets import Dataset
 from reachability.data.loaders import DataLoader

@@ -955,6 +955,16 @@ INPUT /usr/local/texlive/2023/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm7
 OUTPUT notes.toc
 INPUT /usr/local/texlive/2023/texmf-dist/fonts/tfm/public/cm/cmti10.tfm
 INPUT /usr/local/texlive/2023/texmf-var/fonts/map/pdftex/updmap/pdftex.map
+INPUT ./diagrams/q_feat canonicalization fig.png
+INPUT ./diagrams/q_feat canonicalization fig.png
+INPUT diagrams/q_feat canonicalization fig.png
+INPUT ./diagrams/q_feat canonicalization fig.png
+INPUT ./diagrams/q_feat canonicalization fig.png
+INPUT ./diagrams/q_feat canonicalization psi.png
+INPUT ./diagrams/q_feat canonicalization psi.png
+INPUT diagrams/q_feat canonicalization psi.png
+INPUT ./diagrams/q_feat canonicalization psi.png
+INPUT ./diagrams/q_feat canonicalization psi.png
 INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/ot1pcr.fd
 INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/ot1pcr.fd
 INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/ot1pcr.fd

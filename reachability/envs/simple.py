@@ -3,14 +3,8 @@ from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 
+from reachability.data.workspace import Workspace2D
 from reachability.utils.utils import wrap_to_2pi
-
-@dataclass(frozen=True)
-class Workspace2D:
-    hx_min: float
-    hx_max: float
-    hy_min: float
-    hy_max: float
 
 @dataclass(frozen=True)
 class SimpleEnv:
