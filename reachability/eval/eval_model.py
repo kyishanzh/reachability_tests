@@ -46,7 +46,7 @@ def evaluate_model(env, model, h_world_test: np.ndarray, c_world_test: np.ndarra
         pred_cloud = q_samples[i] # shape [S, d_q]
         h_repeated = np.tile(h_world_test[i], (S, 1))
         # print("h repeated shape: ", h_repeated.shape)
-        gt_cloud = env.sample_q_given_h_uniform(h_repeated, rng)
+        gt_cloud = env.sample_q(h_repeated, rng)
         # print("gt cloud shape = ", gt_cloud.shape)        
         score = compute_mmd(pred_cloud, gt_cloud)
         mmd_scores.append(score)

@@ -126,54 +126,81 @@ Complete robot configuration specification:
 
 
 \subsubsection{Data generation pipeline}
+\textcolor{red}{Clean up the math in this section! Switch all the notation to use 6.4210 transform notation, and re-solve out the formulas cleanly. Also add notes on the rejection sampling / self-collision check we've implemented in the code.}
+
+
 \begin{center}
     \textcolor{cyan}{\textsc{The Math}}
 \end{center}
 The goal is to generate a data sampling pipeline for pairs $(q, h)$ where:
 \[q = (x, y, \theta_1, \theta_2, \theta_3) \in \mathbb{R}^6 \qquad h = (h_x, h_y, \phi) \in \mathbb{R}^3\]
 
-Defining some math: Let $R(\alpha) \in \mathbb{R}^{2 \times 2}$ be planar rotation:\[R(\alpha) = \begin{bmatrix}
-    \cos \alpha & - \sin \alpha \\ \sin \alpha & \cos \alpha
+Defining some notation:
+\begin{itemize}
+    \item Frame $W$: The fixed world frame
+    \item Frame $B$: The robot base frame
+    \item Frame $E$: The robot end-effector frame (tip of the arm)
+    \item Frame $H$: The target hand frame (where we want the end-effector to be)
+\end{itemize}
+The variables we have:
+\begin{itemize}
+    \item Base configuration: $(x_B, y_B, \psi)$
+    \item Arm configuration: $\theta = (\theta_1, \theta_2, \theta_3)$
+    \item Target pose: $H = (h_x, h_y, \phi)$
+\end{itemize}
+Defining some math: A planar pose $(x, y, \alpha)$ is represented by the matrix $T \in SE(2)$ (the homogeneous transform):
+\[T(x, y, \alpha) = \begin{bmatrix}
+    \cos \alpha & - \sin \alpha & x \\ \sin \alpha & \cos \alpha & y \\ 0 & 0 & 1
+\end{bmatrix} = \begin{bmatrix}
+    R(\alpha) & p \\ 0 & 1
 \end{bmatrix}\]
-Represent a planar pose $(p, \alpha)$ with $p \in \mathbb{R}^2$ as the following transform: \[T(p, \alpha) = \begin{bmatrix}
-    R(\alpha) & p \\ 0 \quad 0  & 1 
-\end{bmatrix} \in SE(2)\]
 Transform inverse:
 \[T(p, \alpha)^{-1} = \begin{bmatrix}
     R(\alpha)^\top & - R(\alpha)^\top p \\ 0 \quad 0 & 1
 \end{bmatrix}\]
 
-Using the introduced notation, we define the frame of the base in the world as:\[T_{WB} = T\left(\begin{bmatrix}
+Defining some notation:
+\begin{itemize}
+    \item $^A p^C$: Position of $C$ measured from $A$ (vector $\vec{AC}$ = tail at $A$, head at $C$), measured from $A$'s origin $A_0$. We assume this position vector is expressed in $A$'s basis.
+    \item $^B R^A$: Orientation of frame $A$ relative to frame $B$
+    \item $^A T^B$: Pose of frame $B$ in frame $A$
+    \begin{itemize}
+        \item Pose = position (location) + orientation of a frame $B$ with respect to another frame $A$
+        \item Transform = linear operator that maps a point whose location is known in frame $B$ to that same point's location in frame $A$. 
+    \end{itemize}
+\end{itemize}
+
+Using the introduced notation, we define the frame of the base in the world as:\[^W T^B = T\left(\begin{bmatrix}
     x \\ y
 \end{bmatrix}, \psi\right)\]
 
 Using forward kinematics, for a 3-link planar arm with link lengths $L_1, L_2, L_3 > 0$ and cumulative angles $\alpha_1 = \theta_1, \alpha_2 = \theta_1 + \theta_2, \alpha_3 = \theta_1 + \theta_2 + \theta_3$, we have the following end-effector position in the base frame:
-\[p_{BE} (\theta) = \begin{bmatrix}
+\[^B p^E(\theta) = \begin{bmatrix}
     L_1 \cos \alpha_1 + L_2 \cos \alpha_2 + L_3 \cos \alpha_3 \\
     L_1 \sin \alpha_1 + L_2 \sin \alpha_2 + L_3 \sin \alpha_3
 \end{bmatrix}\]
-The end-effector heading in base frame is:\[\phi_{BE}(\theta) = \alpha_3\]
+The end-effector heading in base frame is:\[^B R^E = {^B \phi^E}(\theta) = \alpha_3\]
 So the base-to-EE transform is:
-\[T_{BE}(\theta) = T(p_{BE}(\theta), \phi_{BE}(\theta))\]
+\[^B T^E(\theta) = T({^B p^E}(\theta), {^B R^E} (\theta)) = {^B R^E} {^E T^E} + ^B p^E(\theta)\]
 
 World end-effector transform (forward kinematics):
-\[T_{WE} = T_{WB} T_{BE}(\theta)\]
+\[^W T^E = {^W T^B} {^B T ^E}(\theta)\]
 
 The target label is the end-effector pose:
-\[H = (h_x, h_y, \phi) \iff T_{WH} = T\left(\begin{bmatrix}
+\[H = (h_x, h_y, \phi) \iff {^W T ^H} = T\left(\begin{bmatrix}
     h_x \\h_y
 \end{bmatrix}, \phi\right)\]
 
 The kinematic constraint that the end-effector pose = target pose can be written as:
-\[T_{WH} = T_{WE} = T_{WB} T_{BE}(\theta)\]
+\[^W T^H = {^W T ^E} = {^W T^B} {^B T ^E}(\theta)\]
 Solving for the base pose:
-\[T_{WB} = T_{WH} T_{BE}(\theta)^{-1}\]
+\[{^W T^B} = {^W T^H} \left[{^B T^E}(\theta)\right]^{-1}\]
 So, to generate $(Q, H)$ data points, we can sample $\theta$, sample a target $H$, and compute the base pose by one matrix inverse. 
 \vspace{1mm}
 Math-ing out the above: Let $p_H = \begin{bmatrix}
     h_x \\ h_y
 \end{bmatrix}$, and define:
-\[p_{BE} = p_BE(\theta), \quad \phi_{BE} = \phi_{BE}(\theta) = \theta_1 + \theta_2 + \theta_3\]
+\[^B p^E = {^B p^E}(\theta), \quad {^B \phi^E} = {^B \phi^E}(\theta) = \theta_1 + \theta_2 + \theta_3\]
 
 Since $T_{BE}^{-1}$ has rotation $-\phi_{BE}$ and translation $-R(\phi_{BE})^\top p_{BE}$, composing gives:
 \[\text{Base heading: }\psi = \phi - \phi_{BE} \qquad \text{Base position: }\begin{bmatrix}
@@ -243,7 +270,7 @@ In addition, we featurize $\tilde{\psi} = \psi - \phi$ to extract the relative a
 \end{center}
 
 
-\subsection{Evaluation metrics}
+\subsection{Evaluation metrics} \textcolor{blue}{Come up with new evaluation metrics now that we have more joint links! (e.g. MMD, EMD, etc.)}
 
 \section{Simplified problem v2.1: Round thing with a rotary 2-link arm, generalizable to different workspace sizes}
 

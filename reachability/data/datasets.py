@@ -49,7 +49,7 @@ class Dataset(TorchDataset):
     def generate(cls, env, n: int, rng: np.random.Generator):
         """h ~ p(h) then q ~ p*(q | h). Later, when adding conditioning variables (e.g. obstacles): q ~ p(q | c = [h, ...])"""
         h = env.sample_h(n, rng)
-        q = env.sample_q_given_h_uniform(h, rng)
+        q = env.sample_q(h, rng)
         return cls(env=env, q_world=q, h_world=h, c_world=h) # c_world = h for now, later add actual conditioning information
 
     def preprocess(

@@ -33,6 +33,16 @@ def wrap_to_2pi(theta: np.ndarray) -> np.ndarray:
     """Wrap angles to [0, 2pi)"""
     return np.mod(theta, 2.0 * np.pi)
 
+def sample_from_union(intervals, rng: np.random.Generator, size):
+    intervals = np.array(intervals, dtype=float)
+    lows = intervals[:, 0]
+    highs = intervals[:, 1]
+    lengths = highs - lows
+    probabilities = lengths/lengths.sum()
+    idx = rng.choice(len(intervals), size=size, p=probabilities)
+    return rng.uniform(lows[idx], highs[idx])
+
+
 def grad_global_norm(parameters) -> float:
     """Helpful debugging metric: exploding gradients -> huge norm, dead training -> ~0 norm"""
     total = 0.0

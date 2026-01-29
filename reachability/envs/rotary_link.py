@@ -39,7 +39,7 @@ class RotaryLinkEnv:
         hy = rng.uniform(self.workspace.hy_min, self.workspace.hy_max, size=(n,1))
         return np.concatenate([hx, hy], axis=1).astype(np.float32)  #[n, 2]
 
-    def sample_q_given_h_uniform(self, h_world: np.ndarray, rng: np.random.Generator):
+    def sample_q(self, h_world: np.ndarray, rng: np.random.Generator):
         """Sample Q from the ground-truth conditional given H (shape = n samples x 2), assuming H has a uniform prior across the workspace."""
         n = h_world.shape[0]
         L1, L2 = self.link_lengths[0], self.link_lengths[1]            
@@ -112,6 +112,59 @@ class RotaryLinkEnv:
         else:
             q_world = np.concatenate([x, y, wrap_to_2pi(psi), wrap_to_2pi(th1), wrap_to_2pi(th2)], axis=1).astype(np.float32)
         return q_world
+
+    # def sample_q_given_h_fk_approach(self, h_world: np.ndarray, rng: np.random.Generator):
+    #     """
+    #     Generates Q = (x, y, psi, th1, th2) using the FK-driven pipeline:
+    #     1. Sample joint angles (th1, th2) within limits.
+    #     2. Compute arm FK in local (base) frame.
+    #     3. Sample base heading psi.
+    #     4. Solve for base position (x, y) s.t. base + Rot(psi)*arm_local = h_world.
+    #     """
+    #     n = h_world.shape[0]
+    #     L1, L2 = self.link_lengths[0], self.link_lengths[1]
+
+    #     # 1. Sample arm angles (thetas)
+    #     if self.joint_limits is not None:
+    #         th1 = rng.uniform(self.joint_limits[0, 0], self.joint_limits[0, 1], size=(n, 1))
+    #         th2 = rng.uniform(self.joint_limits[1, 0], self.joint_limits[1, 1], size=(n, 1))
+    #     else:
+    #         th1 = rng.uniform(-np.pi, np.pi, size=(n, 1))
+    #         th2 = rng.uniform(-np.pi, np.pi, size=(n, 1))
+
+    #     # 2. Compute FK in base frame (local_x, local_y)
+    #     # Using the same logic as your fk_hand function
+    #     local_x = L1 * np.cos(th1) + L2 * np.cos(th1 + th2)
+    #     local_y = L1 * np.sin(th1) + L2 * np.sin(th1 + th2)
+
+    #     # 3. Sample base heading psi 
+    #     # (In NLink, this is solved from target phi; here it's free)
+    #     psi = rng.uniform(0, 2 * np.pi, size=(n, 1))
+
+    #     # 4. Solve for base position: p_base = p_target - R(psi) * p_local
+    #     hx = h_world[:, 0:1]
+    #     hy = h_world[:, 1:2]
+        
+    #     cos_psi = np.cos(psi)
+    #     sin_psi = np.sin(psi)
+        
+    #     # Rotate local EE position into world frame (excluding base translation)
+    #     rot_local_x = cos_psi * local_x - sin_psi * local_y
+    #     rot_local_y = sin_psi * local_x + cos_psi * local_y
+        
+    #     base_x = hx - rot_local_x
+    #     base_y = hy - rot_local_y
+
+    #     # Assemble Q: (x, y, psi, th1, th2)
+    #     q_world = np.concatenate([
+    #         base_x, 
+    #         base_y, 
+    #         wrap_to_2pi(psi), 
+    #         wrap_to_2pi(th1), 
+    #         wrap_to_2pi(th2)
+    #     ], axis=1).astype(np.float32)
+        
+    #     return q_world
 
     def fk_hand(self, q_world: np.ndarray) -> np.ndarray:
         """Returns hand position f(Q) given Q (Q shape = n samples x 5)"""

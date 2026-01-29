@@ -32,7 +32,7 @@ class SimpleEnv:
         hy = rng.uniform(self.workspace.hy_min, self.workspace.hy_max, size=(n,1))
         return np.concatenate([hx, hy], axis=1).astype(np.float32)  #[n, 2]
 
-    def sample_q_given_h_uniform(self, h_world: np.ndarray, rng: np.random.Generator):
+    def sample_q(self, h_world: np.ndarray, rng: np.random.Generator):
         """Sample Q from the ground-truth conditional given H (shape = n samples x 2):
         theta ~ Uniform[0, 2pi)
         x = hx - Lcos(theta)

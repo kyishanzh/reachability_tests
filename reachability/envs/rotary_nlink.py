@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from reachability.envs.workspace import Workspace2D
-from reachability.utils.utils import wrap_to_2pi
+from reachability.utils.utils import wrap_to_2pi, sample_from_union
 
 @dataclass(frozen=True)
 class RotaryNLinkEnv:
@@ -20,7 +20,7 @@ class RotaryNLinkEnv:
     """
     workspace: Workspace2D
     link_lengths: np.ndarray  # e.g. np.array([L1, L2]) for 2-link robot
-    joint_limits: np.ndarray | None  # e.g. np.array([[th1_min, th1_max], [th2_min, th2_max]])
+    joint_limits: list | None  # e.g. np.array([[th1_min, th1_max], [th2_min, th2_max]])
     n_links: int = 2 # only working out math for this case for now, extend later potentially
     name: str = "RotaryNLink"
 
@@ -42,7 +42,87 @@ class RotaryNLinkEnv:
         phi = rng.uniform(0, 2 * np.pi, size=(n, 1))
         return np.concatenate([hx, hy, phi], axis=1).astype(np.float32)  #[n, 3]
 
-    def sample_q_given_h_uniform(self, h_world: np.ndarray, rng: np.random.Generator):
+    def sample_q(self, h_world: np.ndarray, rng: np.random.Generator, max_retries=1000):
+        """Samples Q given H, ensuring:
+        1. Kinematic validity (via FK approach)
+        2. No self-collisions (non-adjacent links)
+        3. TODO: No environment collisions (e.g. obstacle avoidance)
+        """
+        n_total = h_world.shape[0]
+        q_final = np.zeros((n_total, self.d_q), dtype=np.float32)
+        solved_mask = np.zeros(n_total, dtype=bool) # Track which indices are done (found solution Q that reaches H)
+
+        iteration = 0
+        while not np.all(solved_mask):
+            iteration += 1
+            if iteration > max_retries:
+                print(f"[WARNING] Could not find valid config for {np.sum(~solved_mask)} samples after {max_retries} retries.")
+                break
+
+            # 1. Identify which target H are unsolved (yet to find valid Q that reaches H)
+            unsolved_mask = ~solved_mask # (n_total,)
+            n_unsolved = np.sum(unsolved_mask)
+            h_subset = h_world[unsolved_mask] # (n_unsolved,)
+
+            # 2. Raw sample (FK-based sampler)
+            q_candidate = self._sample_q_raw(h_subset, rng) # (n_unsolved, d_q)
+
+            # 3. Validation: check for self-collision & env-collision
+            no_self_collision = ~self.check_self_collision(q_candidate) # (n_unsolved,)
+            # TODO: Check environment collision - no_env_collision = ~self.check_env_collision(q_candidate), combined_valid = no_self_coll & no_env_collision
+            combined_valid = no_self_collision # (n_unsolved,)
+
+            # 4. Fill valid samples into the final array
+            current_indices = np.where(unsolved_mask)[0] # (n_unsolved,) containing global indices of unsolved rows in the original 0...N-1
+            successful_indices = current_indices[combined_valid]
+
+            q_final[successful_indices] = q_candidate[combined_valid] # store successful results from this round
+            solved_mask[successful_indices] = True
+    
+        return q_final
+        
+    def check_self_collision(self, q_world: np.ndarray) -> np.ndarray:
+        """
+        Check for self-collision (intersection of non-adjacent links). Returns boolean mask (N,) where True = collision.
+        """
+        n_samples = q_world.shape[0]
+        bx, by, psi = q_world[:, 0:1], q_world[:, 1:2], q_world[:, 2:3]
+        thetas = q_world[:, 3:]
+
+        # FK for all joints
+        joints = np.zeros((n_samples, self.n_links + 1, 2), dtype=np.float32) # (N, n_links + 1, 2)
+        joints[:, 0, 0] = bx[:, 0]
+        joints[:, 0, 1] = by[:, 0]
+        curr_angle = psi.copy()
+        for i in range(self.n_links):
+            curr_angle += thetas[:, i:i+1]
+            L = self.link_lengths[i]
+            # print("joints shape = ", joints.shape, " | L = ", L, " | curr_angle shape = ", curr_angle.shape, " | curr_angle = ", curr_angle)
+            joints[:, i+1, 0] = joints[:, i, 0] + L * np.cos(curr_angle[:, 0])
+            joints[:, i+1, 1] = joints[:, i, 1] + L * np.cos(curr_angle[:, 0])
+
+        # Check every link (i, j) where j > i + 1 for collisions
+        collided = np.zeros(n_samples, dtype=bool) # record collisions
+        for i in range(self.n_links - 2): # no need to check last 2 links against forward
+            # Link A: joints[:, i] to joints[:, i + 1]
+            p1 = joints[:, i]
+            p2 = joints[:, i + 1]
+            for j in range(i + 2, self.n_links):
+                # Link B: joints[:, j] to joints[:, j + 1]
+                p3 = joints[:, j]
+                p4 = joints[:, j + 1]
+
+                # Cross product check orientation of A -> B -> C
+                def ccw(A, B, C):
+                    return (C[:, 1] - A[:, 1]) * (B[:, 0] - A[:, 0]) > (B[:, 1] - A[:, 1]) * (C[:, 0] - A[:, 0])
+                
+                # Segments intersect if endpoints of one are on opposite sides of the other
+                intersect = (ccw(p1, p3, p4) != ccw(p2, p3, p4)) & (ccw(p1, p2, p3) != ccw(p1, p2, p4))
+                collided |= intersect # bitwise OR update intersections -> collisions
+
+        return collided
+
+    def _sample_q_raw(self, h_world: np.ndarray, rng: np.random.Generator): # sample_q given q uniform
         """Generates Q = (x, y, psi, thetas) pairs that satisfy the kinematic constraint for H.
         Pipeline:
         1. Sample random joint angles theta ~ Uniform(limits)
@@ -55,8 +135,7 @@ class RotaryNLinkEnv:
         thetas_list = []
         if self.joint_limits is not None:
             for i in range(self.n_links):
-                low, high = self.joint_limits[i]
-                th = rng.uniform(low, high, size=(n, 1))
+                th = sample_from_union(self.joint_limits[i], rng, size=(n, 1))
                 thetas_list.append(th)
         else:
             # Default to -pi to pi if no limits
@@ -223,4 +302,4 @@ class RotaryNLinkEnv:
         psi_implied = np.arctan2(hy - by, hx - bx)
         # print(psi_implied)
         psi_implied = wrap_to_2pi(psi_implied)
-        return psi_implied.astype(np.float32)
+        return psi_implied.astype(np.float32) 
