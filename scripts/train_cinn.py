@@ -1,16 +1,18 @@
 # run from root reachability_tests/: python -m scripts.train_cinn --config configs/simple_cinn.yaml --wandb
-# to save trained model, add tags --save --save_path "outputs/model_ckpts/cinn/cinn_rotary_1142026.pt" (etc.)
+# to save trained model, add tags --save --save_path "outputs/model_ckpts/cinn/cinn_rotarynlink_1292026.pt" (etc.)
 from __future__ import annotations
 
 import argparse
 import yaml
 import wandb
+import numpy as np
 from pathlib import Path
 
 from reachability.utils.utils import set_seed, print_results
 from reachability.envs.workspace import Workspace2D
 from reachability.envs.simple import SimpleEnv
 from reachability.envs.rotary_link import RotaryLinkEnv
+from reachability.envs.rotary_nlink import RotaryNLinkEnv
 from reachability.data.datasets import Dataset
 from reachability.data.loaders import DataLoader
 from reachability.models.cinn import CINNConditionalSampler
@@ -54,6 +56,12 @@ def main():
             base_pos_eps=float(env_cfg['base_pos_eps']),
             base_heading_stddev=float(env_cfg['base_heading_stddev'])
         )
+    elif env_cfg['type'] == "RotaryNLink":
+        joint_limits = env_cfg['joint_limits'] # intentionally leaving as a list instead of np.array because might contain lists of different sizes (depending on how joint limits are specified)
+        link_lengths = np.array(env_cfg['link_lengths'])
+        if joint_limits == "None":
+            joint_limits = None
+        env = RotaryNLinkEnv(ws, link_lengths=link_lengths, joint_limits=joint_limits, n_links=int(env_cfg['n_links']))
     else:
         raise ValueError(f"Invalid environment type: {env_cfg['type']}")
 
@@ -107,6 +115,7 @@ def main():
         dropout=float(mcfg.get("dropout", 0)),
         # optional constraint shaping
         lambda_fk=float(mcfg.get("lambda_fk", 0.0)),
+        fk_ori_weight=float(mcfg.get("fk_ori_weight", 1.0)),
         # wandb
         wandb_run=run
     )

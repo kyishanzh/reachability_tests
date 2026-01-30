@@ -22,16 +22,61 @@ def fourier_coord_feature(x: np.ndarray, B):
     x_proj = (2.0 * np.pi * x) @ B.T
     return np.concatenate([np.sin(x_proj), np.cos(x_proj)], axis=-1)
 
-def revert_to_angle(cos, sin, eps):
+def align_target_to_samples(h_world: np.ndarray, num_total_samples: int) -> np.ndarray:
+    """Broadcasts targets to match the number of samples. Assumes samples are generated in blocks per target."""
+    num_targets = h_world.shape[0]
+    if num_total_samples == num_targets:
+        return h_world
+    # 1. calculate how many samples (S) exist per target (B)
+    S = num_total_samples // num_targets
+    # 2. if we have multiple samples per target, repeat the anchors
+    return np.repeat(h_world, S, axis=0)
+
+def rotate_2d(vectors: np.ndarray, angles: np.ndarray) -> np.ndarray:
+    """
+    Rotates 2D vectors by specified angles (in radians).
+    vectors: [N, 2], angles: [N, 1]
+    Formula:    x' = x cos(theta) - y sin(theta)
+                y' = x sin(theta) + y cos(theta)
+    """
+    x, y = vectors[:, 0:1], vectors[:, 1:2]
+    c, s = np.cos(angles), np.sin(angles)
+    x_rot = x * c - y * s
+    y_rot = x * s + y * c
+    return np.concatenate([x_rot, y_rot], axis=1)
+
+def angles_to_cossin(angles: np.ndarray) -> np.ndarray:
+    """angles: (num_samples, num_thetas) -> (num_samples, 2*num_thetas) as [cos1, sin1, cos2, sin2, ...]"""
+    angles = np.asarray(angles)
+    if angles.ndim == 1:
+        angles = angles.reshape(-1, 1) # (N,) -> (N, 1)
+    cos = np.cos(angles)
+    sin = np.sin(angles)
+    out = np.empty((angles.shape[0], angles.shape[1] * 2), dtype=cos.dtype)
+    out[:, 0::2] = cos
+    out[:, 1::2] = sin
+    return out
+
+def revert_to_angle(thetas, eps):
+    """Crucial: This function only works if thetas = [cos(t1), sin(t1), cos(t2), sin(t2), ...]"""
+    if thetas.shape[-1] % 2 != 0:
+        raise RuntimeError("Odd number of cos(theta_i), sin(theta_i) features were inputted: must be even to de-featurize properly! Check code for errors.")
+    pairs = thetas.reshape(thetas.shape[0], -1, 2) # (num_samples, num_thetas, 2)
+    cos = pairs[:, :, 0]
+    sin = pairs[:, :, 1]
+
     r = np.sqrt(cos * cos + sin * sin + eps)
     cos = cos / r
     sin = sin / r
     angle = np.arctan2(sin, cos)
-    return np.mod(angle, 2.0 * np.pi)
+    return angle
 
-def wrap_to_2pi(theta: np.ndarray) -> np.ndarray:
+def wrap_to_2pi(theta: np.ndarray) -> np.ndarray: # TODO: deprecate in favor of wrap_to_pi
     """Wrap angles to [0, 2pi)"""
     return np.mod(theta, 2.0 * np.pi)
+
+def wrap_to_pi(angle):
+    return (angle + np.pi) % (2 * np.pi) - np.pi
 
 def sample_from_union(intervals, rng: np.random.Generator, size):
     intervals = np.array(intervals, dtype=float)

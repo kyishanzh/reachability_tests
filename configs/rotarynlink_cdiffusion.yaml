@@ -1,0 +1,42 @@
+seed: 0
+project_name: rotaryNlink_cdiffusion
+
+env:
+  type: "RotaryNLink"
+  link_lengths: [1.0, 0.8, 0.6]
+  joint_limits: [[[-1.5707963267948966, -0.7853981633974483], [0.7853981633974483, 1.5707963267948966]], [[-1.5707963267948966, -1.0471975511965976], [1.0471975511965976, 1.5707963267948966]], [[-3.141592653589793, -0.7853981633974483], [0.7853981633974483, 1.5707963267948966]]]
+  n_links: 3
+  workspace:
+    hx_min: -2.0
+    hx_max:  2.0
+    hy_min: -2.0
+    hy_max:  2.0
+
+data:
+  n_train: 20000
+  n_test: 2000
+
+model:
+  # model
+  hidden_dim: 512
+  num_blocks: 16
+  basexy_norm_type: "canonical"
+
+  # training
+  device: "mps"
+  epochs: 300
+  lr: 1e-4
+  batch_size: 256
+  num_train_timesteps: 1000
+  num_inference_timesteps: 50
+  grad_clip: 1.
+
+  # optional constraint shaping
+  # lambda_fk: 0
+
+eval:
+  n_samples_per_h: 200
+  n_bins_theta: 72
+  eps_hist: 1.0e-9
+  sampling_temperature: 0
+

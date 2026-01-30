@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from reachability.envs.workspace import Workspace2D
-from reachability.utils.utils import wrap_to_2pi, sample_from_union
+from reachability.utils.utils import wrap_to_pi, sample_from_union
 
 @dataclass(frozen=True)
 class RotaryNLinkEnv:
@@ -162,7 +162,7 @@ class RotaryNLinkEnv:
         h_phi = h_world[:, 2:3]
 
         # base heading: psi = phi - phi_BE
-        psi = wrap_to_2pi(h_phi - phi_be)
+        psi = wrap_to_pi(h_phi - phi_be)
 
         # base position: p_B = p_H - R(psi) * p_BE
         cos_psi = np.cos(psi)
@@ -203,7 +203,7 @@ class RotaryNLinkEnv:
         # 3. rotate by base heading psi + add base position b
         hand_x = b_x + np.cos(psi) * local_x - np.sin(psi) * local_y
         hand_y = b_y + np.sin(psi) * local_x + np.cos(psi) * local_y
-        hand_phi = wrap_to_2pi(psi + local_phi)
+        hand_phi = wrap_to_pi(psi + local_phi)
 
         hand = np.concatenate([hand_x, hand_y, hand_phi], axis=1).astype(np.float32)
         # print("hand = ", hand)
@@ -280,6 +280,7 @@ class RotaryNLinkEnv:
         ax.legend(loc='upper right', fontsize='small')
         
         # Determine plot limits to ensure robot fits
+        # print("joint_x = ", len(joint_x), " | hx = ", hx.shape)
         all_x = np.concatenate([joint_x, [hx]])
         all_y = np.concatenate([joint_y, [hy]])
         pad = 1.0
@@ -301,5 +302,5 @@ class RotaryNLinkEnv:
         bx, by = q_world[:, 0], q_world[:, 1]
         psi_implied = np.arctan2(hy - by, hx - bx)
         # print(psi_implied)
-        psi_implied = wrap_to_2pi(psi_implied)
+        psi_implied = wrap_to_pi(psi_implied)
         return psi_implied.astype(np.float32) 

@@ -17,10 +17,12 @@ def evaluate_model(env, model, h_world_test: np.ndarray, c_world_test: np.ndarra
     S = cfg.n_samples_per_h
     q_samples = model.sample(h_world=h_world_test, c_world=c_world_test, n_samples=S, rng=rng, sampling_temperature=cfg.sampling_temperature)  # [B,S,d_q]
     
-    err = hand_error(env, q_samples, h_world_test) # [B,S]
-    err_mean = float(np.mean(err))
-    err_median = float(np.median(err))
-    err_p95 = float(np.quantile(err, 0.95))
+    errs = hand_error(env, q_samples, h_world_test) # [B,S]
+    pos_err, ori_err = errs['pos_err'], errs['ori_err']
+    print("pos_err shape = ", pos_err.shape)
+    pos_err_mean = float(np.mean(pos_err))
+    pos_err_median = float(np.median(pos_err))
+    pos_err_p95 = float(np.quantile(pos_err, 0.95))
 
     base_heading_angles = implied_angles(env, q_samples, h_world_test) # [B,S]
 
@@ -52,13 +54,22 @@ def evaluate_model(env, model, h_world_test: np.ndarray, c_world_test: np.ndarra
         mmd_scores.append(score)
     avg_mmd = np.mean(mmd_scores)
 
-    return {
-        "hand_err/mean": err_mean,
-        "hand_err/median": err_median,
-        "hand_err/p95": err_p95,
+    metrics = {
+        "hand_pos_err/mean": pos_err_mean,
+        "hand_pos_err/median": pos_err_median,
+        "hand_pos_err/p95": pos_err_p95,
         "coverage/max_gap_mean": max_gap_mean,
         "coverage/max_gap_p95": max_gap_p95,
         "coverage/kl_to_uniform": kl,
         "eval/theta_values": th_all.astype(np.float64),
         "eval/avg_mmd": avg_mmd
     }
+
+    if ori_err is not None:
+        metrics.update({
+            "hand_ori_err/mean": float(np.mean(ori_err)),
+            "hand_ori_err/median": float(np.median(ori_err)),
+            "hand_ori_err/p95": float(np.quantile(ori_err, 0.95)),
+        })
+
+    return metrics

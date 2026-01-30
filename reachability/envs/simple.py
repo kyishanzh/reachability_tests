@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 
-from reachability.data.workspace import Workspace2D
+from reachability.envs.workspace import Workspace2D
 from reachability.utils.utils import wrap_to_2pi
 
 @dataclass(frozen=True)

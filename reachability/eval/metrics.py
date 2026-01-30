@@ -7,13 +7,35 @@ from scipy.stats import wasserstein_distance
 # read into the math in this file a lot more carefully
 
 def hand_error(env, q_samples: np.ndarray, h_world: np.ndarray) -> np.ndarray:
-    """||FK(Q) - H||"""
+    """
+    ||FK(Q) - H||
+    Computes decoupled position and orientation errors. 
+    Returns dictionary with keys 'pos_err' (metersr) and 'ori_err' (radians)
+    """
     B, S, _ = q_samples.shape
+    world_coord = h_world.shape[-1]
     q_flattened = q_samples.reshape(B * S, -1)  # [B, S, dQ] -> [B * S, dQ]
-    hand = env.fk_hand(q_flattened).reshape(B, S, 2)  # [B * S, 2] -> [B, S, 2]
     h_world_repeated = h_world[:, None, :]  # [B, 2] -> [B,1,2]
-    err = np.linalg.norm(hand - h_world_repeated, axis=-1)  #[B, S]
-    return err.astype(np.float32)
+
+    # Compute FK -> [x, y, phi]
+    hand = env.fk_hand(q_flattened).reshape(B, S, world_coord)  # [B * S, 2] -> [B, S, 2]
+    
+    # Hand position error
+    pos_pred = hand[:, :, :2]
+    pos_gt = h_world_repeated[:, :, :2]
+    pos_err = np.linalg.norm(pos_pred - pos_gt, axis=-1)
+
+    if env.name == "RotaryNLink":
+        # Hand orientation error
+        phi_pred = hand[:, :, 2]
+        phi_gt = h_world_repeated[:, :, 2]
+        diff = phi_pred - phi_gt
+        ori_err = np.abs(np.arctan2(np.sin(diff), np.cos(diff))) # smallest angle difference: |atan2 sin(diff), np.cos(diff)|
+        return {
+            "pos_err": pos_err.astype(np.float32),
+            "ori_err": ori_err.astype(np.float32)
+        }
+    return {"pos_err": pos_err.astype(np.float32), "ori_err": None}
 
 def implied_angles(env, q_samples: np.ndarray, h_world: np.ndarray) -> np.ndarray:
     """Returns implied theta angles in [0, 2pi): shape [B, S]"""

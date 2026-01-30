@@ -154,6 +154,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
 
     # optional constraint shaping
     lambda_fk: float = 0.0
+    fk_ori_weight: float = 1.0 # FK orientation MSE weight
 
     _model: SimpleCINN | CINNv2 | None = None
     wandb_run: object | None = None
@@ -233,7 +234,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
                     z_samp = torch.randn_like(z)
                     q_hat, _ = self._model.reverse(z_samp, c_feat_batch)
                     q_hat = q_hat.squeeze(1)
-                    fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, h_world_batch, basexy_norm_type=self.basexy_norm_type)
+                    fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, h_world_batch, basexy_norm_type=self.basexy_norm_type, ori_weight=self.fk_ori_weight)
 
                 # backprop
                 loss = torch.mean(nll + self.lambda_fk * fk)
@@ -287,7 +288,7 @@ class CINNConditionalSampler(ConditionalGenerativeModel):
                         q_hat, _ = self._model.reverse(z_samp, c_feat_batch)
                         q_hat = q_hat.squeeze(1)
                         # print("q_hat shape: ", q_hat.shape, " | h_world_batch shape: ", h_world_batch.shape)
-                        fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, h_world_batch, basexy_norm_type=self.basexy_norm_type)
+                        fk = fk_mse_from_qfeat_wrapper(self.env, q_hat, h_world_batch, basexy_norm_type=self.basexy_norm_type, ori_weight=self.fk_ori_weight)
                         # combined loss
                         loss = torch.mean(nll + self.lambda_fk * fk)
                         

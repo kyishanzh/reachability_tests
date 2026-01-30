@@ -114,6 +114,7 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
     device: str = "cpu"
     seed: int = 0
     lambda_fk: float = 0.0 # FK penalty
+    fk_ori_weight: float = 1.0 # FK orientation MSE weight
     wandb_run: object | None = None
     basexy_norm_type: str = "relative"
     add_fourier_feat: bool = False
@@ -163,7 +164,7 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
                 out = self._model(c_feat_batch, q_feat_batch)
                 rec = gaussian_nll(q_feat_batch, out["mu_q"], out["logvar_q"]) # [B]
                 kl = kl_standard_normal(out["mu_z"], out["logvar_z"]) # [B]
-                fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], h_world_batch, basexy_norm_type=self.basexy_norm_type)
+                fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], h_world_batch, basexy_norm_type=self.basexy_norm_type, ori_weight=self.fk_ori_weight)
                 current_beta = get_beta(ep, self.epochs, self.beta) # dynamic beta
                 loss = torch.mean(rec + current_beta * kl + self.lambda_fk * fk_err2)
 
@@ -221,7 +222,7 @@ class CVAEConditionalSampler(ConditionalGenerativeModel):
                         out = self._model(batch['c_feat'], batch['q_feat'])
                         rec = gaussian_nll(batch['q_feat'], out["mu_q"], out["logvar_q"])
                         kl = kl_standard_normal(out["mu_z"], out["logvar_z"]) # [B]
-                        fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], h_world_batch, basexy_norm_type=self.basexy_norm_type) # fk computation based on predicted mu
+                        fk_err2 = fk_mse_from_qfeat_wrapper(self.env, out["mu_q"], h_world_batch, basexy_norm_type=self.basexy_norm_type, ori_weight=self.fk_ori_weight) # fk computation based on predicted mu
                         current_beta = get_beta(ep, self.epochs, self.beta) # dynamic beta
                         loss = torch.mean(rec + current_beta * kl + self.lambda_fk * fk_err2)
                         
