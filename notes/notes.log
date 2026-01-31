@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.9.13)  29 JAN 2026 15:52
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.9.13)  30 JAN 2026 15:18
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -132,7 +132,9 @@ Package: iftex 2022/02/03 v1.0f TeX engine tests
 \Gm@layouthoffset=\dimen158
 \Gm@layoutvoffset=\dimen159
 \Gm@dimlist=\toks28
-) (/usr/local/texlive/2023/texmf-dist/tex/latex/amsfonts/amssymb.sty
+) (/usr/local/texlive/2023/texmf-dist/tex/latex/comment/comment.sty
+\CommentStream=\write3
+ Excluding comment 'comment') (/usr/local/texlive/2023/texmf-dist/tex/latex/amsfonts/amssymb.sty
 Package: amssymb 2013/01/14 v3.01 AMS font symbols
 ) (/usr/local/texlive/2023/texmf-dist/tex/latex/hyperref/hyperref.sty
 Package: hyperref 2023-02-07 v7.00v Hypertext links for LaTeX
@@ -287,7 +289,7 @@ Package: pgfsys 2023-01-15 v3.1.10 (3.1.10)
 \pgf@yc=\dimen175
 \pgf@xd=\dimen176
 \pgf@yd=\dimen177
-\w@pgf@writea=\write3
+\w@pgf@writea=\write4
 \r@pgf@reada=\read2
 \c@pgf@counta=\count286
 \c@pgf@countb=\count287
@@ -509,7 +511,8 @@ File: lstmisc.sty 2023/02/27 1.9 (Carsten Heinz)
 \c@lstnumber=\count314
 \lst@skipnumbers=\count315
 \lst@framebox=\box69
-) (/usr/local/texlive/2023/texmf-dist/tex/latex/listings/listings.cfg
+)
+(/usr/local/texlive/2023/texmf-dist/tex/latex/listings/listings.cfg
 File: listings.cfg 2023/02/27 1.9 listings configuration
 ))
 Package: listings 2023/02/27 1.9 (Carsten Heinz)
@@ -568,29 +571,29 @@ File: l3backend-pdftex.def 2023-01-16 L3 backend support: PDF output (pdfTeX)
 ) (./notes.aux)
 \openout1 = `notes.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 89.
-LaTeX Font Info:    ... okay on input line 89.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 89.
-LaTeX Font Info:    ... okay on input line 89.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 89.
-LaTeX Font Info:    ... okay on input line 89.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 89.
-LaTeX Font Info:    ... okay on input line 89.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 89.
-LaTeX Font Info:    ... okay on input line 89.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 89.
-LaTeX Font Info:    ... okay on input line 89.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 89.
-LaTeX Font Info:    ... okay on input line 89.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 89.
-LaTeX Font Info:    ... okay on input line 89.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 89.
-LaTeX Font Info:    ... okay on input line 89.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 89.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 90.
  (/usr/local/texlive/2023/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 89.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 90.
  (/usr/local/texlive/2023/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
@@ -628,10 +631,10 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-Package hyperref Info: Link coloring ON on input line 89.
+Package hyperref Info: Link coloring ON on input line 90.
 (./notes.out) (./notes.out)
-\@outlinefile=\write4
-\openout4 = `notes.out'.
+\@outlinefile=\write5
+\openout5 = `notes.out'.
 
  (/usr/local/texlive/2023/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
@@ -654,65 +657,65 @@ File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 ))
 \c@lstlisting=\count331
  (./notes.toc)
-\tf@toc=\write5
-\openout5 = `notes.toc'.
+\tf@toc=\write6
+\openout6 = `notes.toc'.
 
  [1{/usr/local/texlive/2023/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 115.
+(hyperref)                removing `math shift' on input line 116.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\psi' on input line 115.
+(hyperref)                removing `\psi' on input line 116.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 115.
+(hyperref)                removing `math shift' on input line 116.
 
-[2] [3]
-<diagrams/q_feat canonicalization fig.png, id=208, 859.2903pt x 354.123pt>
+[2] Excluding 'comment' comment. [3]
+<diagrams/q_feat canonicalization fig.png, id=202, 859.2903pt x 354.123pt>
 File: diagrams/q_feat canonicalization fig.png Graphic file (type png)
 <use diagrams/q_feat canonicalization fig.png>
-Package pdftex.def Info: diagrams/q_feat canonicalization fig.png  used on input line 264.
+Package pdftex.def Info: diagrams/q_feat canonicalization fig.png  used on input line 335.
 (pdftex.def)             Requested size: 429.64409pt x 177.06105pt.
-<diagrams/q_feat canonicalization psi.png, id=210, 1003.8303pt x 426.393pt>
+ [4]
+<diagrams/q_feat canonicalization psi.png, id=217, 1003.8303pt x 426.393pt>
 File: diagrams/q_feat canonicalization psi.png Graphic file (type png)
 <use diagrams/q_feat canonicalization psi.png>
-Package pdftex.def Info: diagrams/q_feat canonicalization psi.png  used on input line 269.
+Package pdftex.def Info: diagrams/q_feat canonicalization psi.png  used on input line 340.
 (pdftex.def)             Requested size: 401.52501pt x 170.55417pt.
- [4 <./diagrams/q_feat canonicalization fig.png>]
-LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 290.
+LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 361.
  (/usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/ot1pcr.fd
 File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
-)
-Overfull \hbox (38.93567pt too wide) in paragraph at lines 319--329
+) [5{/usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/base/8r.enc} <./diagrams/q_feat canonicalization fig.png> <./diagrams/q_feat canonicalization psi.png>] [6]
+Overfull \hbox (38.93567pt too wide) in paragraph at lines 464--474
  [][] 
  []
 
-[5{/usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/base/8r.enc} <./diagrams/q_feat canonicalization psi.png>] [6] [7] [8]
+[7] [8] [9] [10]
 LaTeX Font Info:    Font shape `OT1/pcr/m/it' in size <10> not available
-(Font)              Font shape `OT1/pcr/m/sl' tried instead on input line 513.
- [9] [10] [11]
+(Font)              Font shape `OT1/pcr/m/sl' tried instead on input line 649.
+ [11] [12] [13]
 LaTeX Font Info:    Font shape `OT1/pcr/m/it' in size <9> not available
-(Font)              Font shape `OT1/pcr/m/sl' tried instead on input line 657.
- [12] [13] [14] [15] [16] [17] [18] (./notes.bbl) [19] (./notes.aux)
+(Font)              Font shape `OT1/pcr/m/sl' tried instead on input line 793.
+ [14] [15] [16] [17] [18] [19] [20] (./notes.bbl) [21] (./notes.aux)
 Package rerunfilecheck Info: File `notes.out' has not changed.
-(rerunfilecheck)             Checksum: 56020C2859E6A35122D2F737475E1CB9;6643.
+(rerunfilecheck)             Checksum: 6CA0EE4DB2DAC0079BF712D99DCAE3E5;6464.
  ) 
 Here is how much of TeX's memory you used:
- 25166 strings out of 476025
- 466239 string characters out of 5790017
+ 25225 strings out of 476025
+ 467420 string characters out of 5790017
  1874388 words of memory out of 5000000
- 44907 multiletter control sequences out of 15000+600000
+ 44956 multiletter control sequences out of 15000+600000
  522273 words of font info for 69 fonts, out of 8000000 for 9000
  1302 hyphenation exceptions out of 8191
  102i,14n,104p,873b,1474s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy5.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmti7.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmti8.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></usr/local/texlive/2023/texmf-dist/fonts/type1/urw/courier/ucrro8a.pfb>
-Output written on notes.pdf (19 pages, 424415 bytes).
+Output written on notes.pdf (21 pages, 440906 bytes).
 PDF statistics:
- 482 PDF objects out of 1000 (max. 8388607)
- 412 compressed objects within 5 object streams
- 128 named destinations out of 1000 (max. 500000)
- 287 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 490 PDF objects out of 1000 (max. 8388607)
+ 418 compressed objects within 5 object streams
+ 134 named destinations out of 1000 (max. 500000)
+ 279 words of extra memory for PDF output out of 10000 (max. 10000000)
 

@@ -137,6 +137,17 @@ INPUT /usr/local/texlive/2023/texmf-dist/tex/generic/iftex/iftex.sty
 INPUT /usr/local/texlive/2023/texmf-dist/tex/generic/iftex/iftex.sty
 INPUT /usr/local/texlive/2023/texmf-dist/tex/generic/iftex/iftex.sty
 INPUT /usr/local/texlive/2023/texmf-dist/tex/generic/iftex/iftex.sty
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/comment/comment.sty
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/comment/comment.sty
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/comment/comment.sty
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/comment/comment.sty
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/comment/comment.sty
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/comment/comment.sty
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/comment/comment.sty
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/comment/comment.sty
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/comment/comment.sty
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/comment/comment.sty
+INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/comment/comment.sty
 INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/amscls/amsthm.sty
 INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/amsmath/amsmath.sty
 INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/amsfonts/amssymb.sty
@@ -970,6 +981,8 @@ INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/ot1pcr.fd
 INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/ot1pcr.fd
 INPUT /usr/local/texlive/2023/texmf-dist/tex/latex/psnfss/ot1pcr.fd
 INPUT /usr/local/texlive/2023/texmf-dist/fonts/tfm/adobe/courier/pcrr7t.tfm
+INPUT /usr/local/texlive/2023/texmf-dist/fonts/tfm/public/cm/cmbx7.tfm
+INPUT /usr/local/texlive/2023/texmf-dist/fonts/tfm/public/cm/cmbx5.tfm
 INPUT /usr/local/texlive/2023/texmf-dist/fonts/vf/adobe/courier/pcrr7t.vf
 INPUT /usr/local/texlive/2023/texmf-dist/fonts/tfm/adobe/courier/pcrr8r.tfm
 INPUT /usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/base/8r.enc
@@ -985,8 +998,6 @@ INPUT /usr/local/texlive/2023/texmf-dist/fonts/vf/adobe/courier/pcrr7t.vf
 INPUT /usr/local/texlive/2023/texmf-dist/fonts/tfm/adobe/courier/pcrr8r.tfm
 INPUT /usr/local/texlive/2023/texmf-dist/fonts/vf/adobe/courier/pcrro7t.vf
 INPUT /usr/local/texlive/2023/texmf-dist/fonts/tfm/adobe/courier/pcrro8r.tfm
-INPUT /usr/local/texlive/2023/texmf-dist/fonts/tfm/public/cm/cmbx7.tfm
-INPUT /usr/local/texlive/2023/texmf-dist/fonts/tfm/public/cm/cmbx5.tfm
 INPUT ./notes.bbl
 INPUT notes.bbl
 INPUT ./notes.bbl

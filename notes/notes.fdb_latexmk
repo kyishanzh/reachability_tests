@@ -1,14 +1,14 @@
 # Fdb version 4
-["bibtex notes"] 1769719971 "notes.aux" "notes.bbl" "notes" 1769719976 0
+["bibtex notes"] 1769802912 "notes.aux" "notes.bbl" "notes" 1769804299 0
   "./reachability_references.bib" 1767575372 9451 a555a2bc6ef2278ce59a23b5f070091e ""
   "/usr/local/texlive/2023/texmf-dist/bibtex/bst/base/plain.bst" 1292289607 20613 bd3fbfa9f64872b81ac57a0dd2ed855f ""
-  "notes.aux" 1769719976 9815 c73e937e7cfde8cc225004cdad1b12ca "pdflatex"
+  "notes.aux" 1769804299 10298 2ae05f7141c3944d0bddea8db2a737b7 "pdflatex"
   (generated)
   "notes.bbl"
   "notes.blg"
   (rewritten before read)
-["pdflatex"] 1769719975 "/Users/niu/projects/reachability_tests/notes/notes.tex" "notes.pdf" "notes" 1769719976 0
-  "/Users/niu/projects/reachability_tests/notes/notes.tex" 1769719975 67976 aa13c4c39cffa28a93b51726fad6542a ""
+["pdflatex"] 1769804298 "/Users/niu/projects/reachability_tests/notes/notes.tex" "notes.pdf" "notes" 1769804299 0
+  "/Users/niu/projects/reachability_tests/notes/notes.tex" 1769804298 79026 78c71ca3994bc46d7bfcf7a4d87323ec ""
   "/usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/local/texlive/2023/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2023/texmf-dist/fonts/tfm/adobe/courier/pcrr7t.tfm" 1136768653 960 379cc0019370a9e0208a0a3f949f847a ""
@@ -151,6 +151,7 @@
   "/usr/local/texlive/2023/texmf-dist/tex/latex/base/atveryend-ltx.sty" 1667332637 2462 8ce5f9a9c63002f2c1af03c262cf29af ""
   "/usr/local/texlive/2023/texmf-dist/tex/latex/base/ifthen.sty" 1654720880 5319 48d7f3cfa322abd2788e3c09d624b922 ""
   "/usr/local/texlive/2023/texmf-dist/tex/latex/cite/cite.sty" 1425427964 26218 19edeff8cdc2bcb704e8051dc55eb5a7 ""
+  "/usr/local/texlive/2023/texmf-dist/tex/latex/comment/comment.sty" 1472166125 10197 204f75d5d8d88aa345a8c402e879e63b ""
   "/usr/local/texlive/2023/texmf-dist/tex/latex/enumitem/enumitem.sty" 1561238569 51697 f8f08183cd2080d9d18a41432d651dfb ""
   "/usr/local/texlive/2023/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty" 1579991033 13886 d1306dcf79a944f6988e688c1785f9ce ""
   "/usr/local/texlive/2023/texmf-dist/tex/latex/geometry/geometry.sty" 1578002852 41601 9cf6c5257b1bc7af01a58859749dd37a ""
@@ -206,11 +207,11 @@
   "/usr/local/texlive/2023/texmf.cnf" 1678822455 577 1b2b1af17af2508fb20dd85783af4050 ""
   "diagrams/q_feat canonicalization fig.png" 1769558097 36389 7b1b88b0338544d37bbfe0b533bb31b1 ""
   "diagrams/q_feat canonicalization psi.png" 1769558478 36095 c607ab28bd947cbdcfe7b03710cda1d8 ""
-  "notes.aux" 1769719976 9815 c73e937e7cfde8cc225004cdad1b12ca "pdflatex"
-  "notes.bbl" 1769719971 348 bbfe71699a21a2578cafe32b15286822 "bibtex notes"
-  "notes.out" 1769719976 6643 56020c2859e6a35122d2f737475e1cb9 "pdflatex"
-  "notes.tex" 1769719975 67976 aa13c4c39cffa28a93b51726fad6542a ""
-  "notes.toc" 1769719976 5797 25b7c63d040d6cf80b98027958edd04c "pdflatex"
+  "notes.aux" 1769804299 10298 2ae05f7141c3944d0bddea8db2a737b7 "pdflatex"
+  "notes.bbl" 1769802912 348 bbfe71699a21a2578cafe32b15286822 "bibtex notes"
+  "notes.out" 1769804299 6464 6ca0ee4db2dac0079bf712d99dcae3e5 "pdflatex"
+  "notes.tex" 1769804298 79026 78c71ca3994bc46d7bfcf7a4d87323ec ""
+  "notes.toc" 1769804299 6157 d0f489797a2530d447806b90b183b8c9 "pdflatex"
   (generated)
   "notes.aux"
   "notes.log"

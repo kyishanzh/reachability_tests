@@ -1,6 +1,7 @@
 \documentclass{amsart}
 \usepackage[margin=1in]{geometry}
 
+\usepackage{comment}
 \usepackage{amsthm, amsmath, amssymb}
 \usepackage[colorlinks]{hyperref}
 \usepackage{amsmath,amssymb,amsthm}
@@ -126,8 +127,6 @@ Complete robot configuration specification:
 
 
 \subsubsection{Data generation pipeline}
-\textcolor{red}{Clean up the math in this section! Switch all the notation to use 6.4210 transform notation, and re-solve out the formulas cleanly. Also add notes on the rejection sampling / self-collision check we've implemented in the code.}
-
 
 \begin{center}
     \textcolor{cyan}{\textsc{The Math}}
@@ -135,45 +134,97 @@ Complete robot configuration specification:
 The goal is to generate a data sampling pipeline for pairs $(q, h)$ where:
 \[q = (x, y, \theta_1, \theta_2, \theta_3) \in \mathbb{R}^6 \qquad h = (h_x, h_y, \phi) \in \mathbb{R}^3\]
 
-Defining some notation:
+\textbf{State space definitions:}
 \begin{itemize}
-    \item Frame $W$: The fixed world frame
+    \item Base configuration: $(x_B, y_B, \psi) \in SE(2)$
+    \item Arm configuration: $\theta = (\theta_1, \theta_2, \theta_3)\in \mathbb{R}^3$
+    \item Target pose: $H = (h_x, h_y, \phi) \in SE(2)$
+\end{itemize}
+
+\textbf{Notation and coordinate frames:}
+\begin{itemize}
+    \item Frames:
+    \begin{itemize}
+        \item Frame $W$: The fixed world frame
     \item Frame $B$: The robot base frame
     \item Frame $E$: The robot end-effector frame (tip of the arm)
     \item Frame $H$: The target hand frame (where we want the end-effector to be)
-\end{itemize}
-The variables we have:
-\begin{itemize}
-    \item Base configuration: $(x_B, y_B, \psi)$
-    \item Arm configuration: $\theta = (\theta_1, \theta_2, \theta_3)$
-    \item Target pose: $H = (h_x, h_y, \phi)$
-\end{itemize}
-Defining some math: A planar pose $(x, y, \alpha)$ is represented by the matrix $T \in SE(2)$ (the homogeneous transform):
-\[T(x, y, \alpha) = \begin{bmatrix}
-    \cos \alpha & - \sin \alpha & x \\ \sin \alpha & \cos \alpha & y \\ 0 & 0 & 1
+    \end{itemize}
+
+    \item Variables:
+    \begin{itemize}
+        \item $^A p^C_A$: Position vector from origin of $A$ to origin of $C$, expressed in frame $A$.
+        \item $^A R^B$: Rotation matrix describing orientation of $B$ relative to $A$
+        \item $T(p, \alpha)$: Planar homogeneous transform for position $p \in \mathbb{R}^2$ and heading $\alpha$
+        \[T(p, \alpha) = \begin{bmatrix}
+    \cos \alpha & - \sin \alpha & p_x \\ \sin \alpha & \cos \alpha & p_y \\ 0 & 0 & 1
 \end{bmatrix} = \begin{bmatrix}
     R(\alpha) & p \\ 0 & 1
-\end{bmatrix}\]
-Transform inverse:
+\end{bmatrix}\]Transform inverse:
 \[T(p, \alpha)^{-1} = \begin{bmatrix}
     R(\alpha)^\top & - R(\alpha)^\top p \\ 0 \quad 0 & 1
 \end{bmatrix}\]
-
-Defining some notation:
-\begin{itemize}
-    \item $^A p^C$: Position of $C$ measured from $A$ (vector $\vec{AC}$ = tail at $A$, head at $C$), measured from $A$'s origin $A_0$. We assume this position vector is expressed in $A$'s basis.
-    \item $^B R^A$: Orientation of frame $A$ relative to frame $B$
-    \item $^A T^B$: Pose of frame $B$ in frame $A$
-    \begin{itemize}
-        \item Pose = position (location) + orientation of a frame $B$ with respect to another frame $A$
-        \item Transform = linear operator that maps a point whose location is known in frame $B$ to that same point's location in frame $A$. 
+\textcolor{purple}{$\uparrow$ Work out derivation for this inverse formula later!}
     \end{itemize}
 \end{itemize}
 
-Using the introduced notation, we define the frame of the base in the world as:\[^W T^B = T\left(\begin{bmatrix}
+% Defining some notation:
+% \begin{itemize}
+%     \item $^A p^C$: Position of $C$ measured from $A$ (vector $\vec{AC}$ = tail at $A$, head at $C$), measured from $A$'s origin $A_0$. We assume this position vector is expressed in $A$'s basis.
+%     \item $^B R^A$: Orientation of frame $A$ relative to frame $B$
+%     \item $^A T^B$: Pose of frame $B$ in frame $A$
+%     \begin{itemize}
+%         \item Pose = position (location) + orientation of a frame $B$ with respect to another frame $A$
+%         \item Transform = linear operator that maps a point whose location is known in frame $B$ to that same point's location in frame $A$. 
+%     \end{itemize}
+% \end{itemize}
+
+\textbf{The kinematic constraint (our goal):} Using the introduced notation, we define the frame of the base in the world as:\[^W T^B = T\left(\begin{bmatrix}
     x \\ y
 \end{bmatrix}, \psi\right)\]
 
+We wish to find a base pose such that the end-effector $E$ perfectly aligns with a sampled target $H$:
+\[^W T^E = {^W T^H}\]
+Expanding the kinematic chain from [World $\rightarrow$ Base $\rightarrow$ End-effector]:
+\[^W T^B \cdot {^B T^E}(\theta) = {^W T^H}\]
+Our goal is to find $^W T^B$ that makes the above constraint true. Solving for the base pose:
+\[{^W T^B} = {^W T^H} \left[{^B T^E}(\theta)\right]^{-1}\]
+
+Using the transform inverse property $[{^A T^B}]^{-1}= {^B T^A}$, this becomes:\[^W T^B = {^W T^H} \cdot {^E T^B}(\theta)\]
+
+Let us now expand the matrix multiplication:
+\begin{align*}^W T^B = {^W T^H} \cdot {^E T^B}(\theta) \Longrightarrow \begin{bmatrix}
+    {^W R^B} & {^W p^B_W} \\ 0 & 1
+\end{bmatrix} &= \begin{bmatrix}
+    {^W R^H} & {^W p^H_W} \\ 0 & 1
+\end{bmatrix} \begin{bmatrix}
+    {^E R^B} & {^E p^B_E} \\ 0 & 1
+\end{bmatrix} \\
+&= \begin{bmatrix}
+    {^W R^H} \cdot {^E R^B} & {^W R^H} \cdot {^E p^B_E} + {^W p_W^H} \\ 0 & 1
+\end{bmatrix}\end{align*}
+
+Plugging in our numbers:
+\begin{itemize}
+    \item \textbf{Orientation:} ${^W R^B} = {^W R^H} \cdot {^E R^B} \Longrightarrow$ in scalar angles, $\psi = \phi - (\theta_1 + \theta_2 + \theta_3)$ \textcolor{purple}{(Work out the math here more carefully later.)}
+    \item \textbf{Position:} ${^W p^B_W}= {^W R^H} \cdot {^E p^B_E} + {^W p_W^H}$
+    \begin{itemize}
+        \item[$\star$] ${^W p_W^H}$ is the sampled target position $[h_x, h_y]^\top$
+        \item[$\star$] ${^E p^B_E}$ is the position of the base relative to the tip, expressed in the tip frame. 
+        \begin{itemize}
+            \item $\uparrow$ We can rewrite ${^E p^B_E}$ using the known forward kinematics vector $^B p^E_B$ (Base $\rightarrow$ Tip): $^B p^E_E = -{^E R^B} {^B p^E_B}$
+            \begin{proof}[Derivation] We start wtih ${^B p^E_B}$, which is the vector pointing from base to end-effector in the base frame. Physically, this is the exact opposite vector to the vector pointing from end-effector to base in the base frame, i.e. ${^B p^E_B} = -{^E p^B_B}$. However, the term we are solving for is $^B p^E_E$, so we need to do a change of basis:
+                \[\underbrace{^E p^B_E}_\text{Tip to base in frame $E$} = \underbrace{^E R^B}_\text{\text{Rotate $B$ to $E$}} \cdot \left(\underbrace{- ^B p^E_B}_{\text{Tip to base in $B$}}\right)\]
+                
+            \end{proof}
+        \end{itemize}
+        Simplifying via rotation composition ($^W R^H {^E R ^B} = {^W R^B}$ assuming $E=H$):
+        \[{^W p^B_W}= -{^W R^B} \cdot {^B p^E_B} + {^W p_W^H}\]
+        $\uparrow$ Geometric intuition: The base is located at the target position, minus the arm's reach vector rotated by the base's global heading.
+    \end{itemize}
+\end{itemize}
+
+\begin{comment}
 Using forward kinematics, for a 3-link planar arm with link lengths $L_1, L_2, L_3 > 0$ and cumulative angles $\alpha_1 = \theta_1, \alpha_2 = \theta_1 + \theta_2, \alpha_3 = \theta_1 + \theta_2 + \theta_3$, we have the following end-effector position in the base frame:
 \[^B p^E(\theta) = \begin{bmatrix}
     L_1 \cos \alpha_1 + L_2 \cos \alpha_2 + L_3 \cos \alpha_3 \\
@@ -207,36 +258,56 @@ Since $T_{BE}^{-1}$ has rotation $-\phi_{BE}$ and translation $-R(\phi_{BE})^\to
     x \\ y
 \end{bmatrix} = p_H - R(\psi)p_{BE}\]
 So given $(H = [h_x, h_y, \phi], \theta = [\theta_1, \theta_2, \theta_3])$, base pose $(x,y, \psi)$ is uniquely determined. 
+\end{comment}
 
 \begin{center}
-    \textcolor{cyan}{\textsc{The Pipeline}}
+    \textcolor{cyan}{\textsc{The Sampling Pipeline}} \\
+    (Replace 3 with $N$ in the below math to extend the pipeline to an arbitrary number of links)
 \end{center}
 
 Inputs/hyperparameters:
 \begin{itemize}
     \item Link lengths $L_1, L_2, L_3$
     \item Joint distributions with limits: \[\theta_1 \sim \text{Unif}[a_1, b_1], \theta_2 \sim \text{Unif}[a_2, b_2], \theta_3 \sim \text{Unif}[a_3, b_3] \Leftarrow \mathcal{D}_\theta \]
+    \begin{itemize}
+        \item Can also have multimodal joint distributions: e.g., $\theta_1 \sim \text{Unif}[[a_1, b_1] \cup [c_1, d_1]]$
+    \end{itemize}
     \item Target sampling distribution: we will assume uniform end-effector position and heading across the workspace \[h_x, h_y \sim \text{Unif}([-w, w]^2), \quad \phi \sim \text{Unif}[0, 2\pi)\Leftarrow \mathcal{D}_H\]
 \end{itemize}
 
 Pipeline:
 \begin{enumerate}
-    \item Sample arm angles: $\theta = (\theta_1, \theta_2, \theta_3) \sim \mathcal{D}_\theta$
-    \item Compute FK in base frame:\[p_{BE}(\theta) = \begin{bmatrix}
+    \item \textbf{Sample joint configuration:} $\theta = (\theta_1, \theta_2, \theta_3) \sim \mathcal{D}_\theta$
+    \item \textbf{Compute arm FK in base frame:}\[{^B p^E_B}(\theta) = \begin{bmatrix}
         \sum_{i=1}^3 L_i \cos \left(\sum_{j=1}^i \theta_j\right) \\
         \sum_{i=1}^3 L_i \sin \left(\sum_{j=1}^i \theta_j\right)
-    \end{bmatrix}, \qquad \phi_{BE}(\theta) = \theta_1 + \theta_2 + \theta_3\]
-    \item Sample a target pose: $H = (h_x, h_y, \phi) \sim \mathcal{D}_h$. Define $p_H = [h_x, h_y]^\top$. 
-    \item Solve base pose by inversion:\[\psi = \text{wrap}_{2\pi} (\phi - \phi_{BE}(\theta)), \quad \begin{bmatrix}
-        x \\y
-    \end{bmatrix} = p_H - R(\psi) p_{BE}(\theta)\]
-    \item Final configuration vector: $Q = (x, y, \psi, \theta_1, \theta_2, \theta_3)$. Store the pair $(Q, H)$, and repeat until you have $N$ samples. 
+    \end{bmatrix}, \qquad \phi_{\text{arm}}(\theta) = \sum_{i=1}^3 \theta_i \]
+    \item \textbf{Sample a target pose:} $H = (h_x, h_y, \phi) \sim \mathcal{D}_h$. 
+    \item \textbf{Analytic base solve:}\[\boxed{\psi = \text{wrap}_{\pi} (\phi - \phi_{\text{arm}})}, \quad \begin{bmatrix}
+        x_B \\y_B
+    \end{bmatrix} = \begin{bmatrix}
+    h_x \\ h_y
+    \end{bmatrix} - R(\psi) {^B p^E_B} = \boxed{\begin{bmatrix}
+    h_x \\ h_y
+    \end{bmatrix} - \begin{bmatrix}
+    \cos \psi & - \sin \psi \\ \sin \psi & \cos \psi
+    \end{bmatrix} {^B p^E_B}}\]
+    \item \textbf{Rejection sampling (validity checks):} The analytic solution guarantees the end-effector reaches the target, but not that the configuration is valid. We run a rejection sampling loop that checks for:
+    \begin{itemize}
+        \item Self-collision: Check if any links intersect with each other. \textcolor{blue}{[To add: Check if any links intersect with the base point.]}
+        \item \textcolor{blue}{[To add: Environment-collision/obstacles]}
+    \end{itemize}
+    If check passes: Store the pair $(Q, H)$ in the dataset where $Q = (x_B, y_B, \psi, \theta_1, \theta_2, \theta_3)$. If check fails, discard $(Q,H)$ and return to Step 1. 
 \end{enumerate}
+$\uparrow$ Repeat until you have $N$ samples / reach max retries for rejection sampling. 
+\vspace{1mm}
+
 TL;DR: For $i = 1, \ldots, N$, we sample from the joint $(\theta, H)\sim \mathcal{D}_\theta \times \mathcal{D}_H$:
 \begin{enumerate}
     \item Sample $\theta^{(i)} \sim \mathcal{D}_\theta$
     \item Sample $H^{(i)} \sim \mathcal{D}_H$ 
     \item Deterministically compute $Q^{(i)} = f(\theta^{(i)}, H^{(i)})$
+    \item Run rejection sampling loop to ensure that the $(Q,H)$ computed satisfies specified constraints before adding it to the dataset.
 \end{enumerate}
 \subsubsection{Featurization}
 Defining $R = L_1 + L_2 + L_3$ (robot reach),
@@ -269,8 +340,82 @@ In addition, we featurize $\tilde{\psi} = \psi - \phi$ to extract the relative a
     \includegraphics[scale=0.4]{diagrams/q_feat canonicalization psi.png}
 \end{center}
 
+\subsection{Evaluation metrics}
 
-\subsection{Evaluation metrics} \textcolor{blue}{Come up with new evaluation metrics now that we have more joint links! (e.g. MMD, EMD, etc.)}
+\subsubsection{Fidelity metrics} \textcolor{brown}{Does the robot reach the target?}
+
+\begin{itemize}
+    \item \textbf{Positional error (RMSE):} Euclidean distance:
+    \[E_\text{pos} (\hat{q}, h) = ||\text{FK}_{\text{pos}}(\hat{q}) - h_{\text{pos}}||\]
+    \item \textbf{Rotational error (Geodesic):} Angular distance on circle between $\text{FK}_{\text{ori}}(\hat{q})$ and $h_\text{ori}$ (the shortest arc length on the unit circle $S^1$ between the robot's end-effector heading and the target heading):
+    \[E_{\text{ori}}(\hat{q}, h) = d_{S^1} (\text{FK}_\text{ori}(\hat{q}), h_\phi)\]
+    \begin{itemize}
+        \item Derivation and proof: \textcolor{purple}{Look into more detail later! We implement in the code as:} \[d_{S^1}(\theta_1, \theta_2) = |\text{atan2}(\sin (\theta_1 - \theta_2), \cos(\theta_1, \theta_2))|\]
+        This guarantees the error is always in $[0, \pi]$
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Feasibility metrics} \textcolor{brown}{Is the robot broken?}
+
+\begin{itemize}
+    \item \textbf{Self-collision rate:} Percentage of generated samples that fail \texttt{env.check\_self\_collision}
+    \[R_{\text{coll}} = \frac{1}{N} \sum_{i=1}^N \mathbf{1}(\text{CheckColl}(\hat{q}_i))\] where $\mathbf{1}(\cdot)$ is the indicator function.
+    \begin{itemize}
+        \item This is the probability that a generated sample intersects itself.
+        \item Interpretation: If $R_{\text{coll}} > 0$, the model is hallucinating configurations that contain self-collisions.
+    \end{itemize}
+    \item \textbf{Joint limit violation rate:} Percentage of generated samples where any $\theta_i$ is outside the specified joint limits (when generating training data). \[R_{\text{limit}} = \frac{1}{N} \sum_{i=1}^N \mathbf{1} \left(\exists j : \hat{q}_{i,j} \notin \left[L_{\text{min}}^j, L_{\text{max}}^j\right]\right)\]
+\end{itemize}
+
+\subsubsection{Distribution metrics} \textcolor{brown}{Does the model capture the full valid solution space?}
+\begin{itemize}
+    \item \textbf{MMD (Joint space):} Kernel distance between model samples and ground truth samples on full state $q$ (measures global distribution match). Outputs a single scalar score representing the distance between the model distribution $M$ and ground truth distribution $G$.
+    \begin{itemize}
+        \item Mathematical derivation: We map distributions to a Reproducing Kernel Hilbert Space (RKHS) $\mathcal{H}$ via a feature map $\phi(x)$. If the ``mean embeddings'' (centers of mass) in this space are identical, the distributions are identical:
+        \[\text{MMD}^2(M, G) = ||\mu_M - \mu_G||_{\mathcal{H}}^2\]
+        Expanding the norm via the inner product $\langle \cdot \rangle_{\mathcal{H}}$: \begin{align*}
+            \text{MMD}^2 &= \langle \mu_M - \mu_G, \mu_M - \mu_G \rangle \\ &= \langle \mu_M, \mu_M \rangle + \langle \mu_G, \mu_G \rangle - 2 \langle \mu_M, \mu_G \rangle
+        \end{align*}
+        Using the ``Kernel Trick'' $k(x,y) = \langle \phi(x), \phi(y)\rangle$, we avoid computing the infinite-dimensional $\phi$ and simply compute pairwise similarities: \[\text{MMD}^2 \approx \underbrace{\frac{1}{(N_M)^2} \sum_{i,j} k(x_i, x_j) + \frac{1}{(N_G)^2} \sum_{i,j} k(y_i, y_j)}_{\text{Self-similarity (clumping)}} - \underbrace{\frac{2}{N_M \cdot N_G}\sum_{i,j}k(x_i, y_j)}_{\text{Cross-similarity}}\]
+        To minimize MMD, the model samples $x$ must be as close to ground truth samples $y$ as they are to each other (MMD $\approx 0 $ only when samples within $M$ look similar to each other, samples within $G$ look similar to each other, and samples across $P$ and $Q$ look similarly similar).
+
+        \item Caveat: MMD is sensitive to kernel bandwidth. Too small $\rightarrow$ only near-exact matches matter; too large $\rightarrow$ everything looks similar and MMD loses power. We implement multi-kernel MMD (mean over multiple kernel bandwidths) to address this caveat.
+    \end{itemize}
+    \item \textbf{EMD (Target bearing):} Wasserstein distance between model bearing angles and ground truth bearing angles (measures if the robot is approaching from the correct valid directions).
+    \begin{itemize}
+        \item Intuition: EMD measures the minimum ``work'' required to transform one distribution of mass into another, where ``work'' = (amount of mass moved) $\times$ (distance moved). \textcolor{gray}{(Example: Imagine $M$ is a pile of dirt spread along a line, and $G$ is the shape you want. You're allowed to shovel dirt around. $W_1$ is the cheapest total shoveling cost.)}
+        \item For this metric, we define:
+        \begin{itemize}
+            \item $M$ = distribution of bearing angles produced by the model (angle of vector from robot base to the target, measured in the world frame)
+            \item $G$ = distribution of bearing angles from ground truth
+        \end{itemize}
+        \item Math: \[W_1 (M, G) = \inf_{\gamma \in \Pi(M, G)} \mathbb{E}_{(x,y) \sim \gamma}[|x-y|]\]
+        For 1D distributions, this has a closed-form solution using the inverse CDF. If we sort samples $x_{(1)}\leq \cdots \leq x_{(N)}$ and $y_{(1)}\leq \cdots \leq y_{(N)}$: \[W_1 \approx \frac{1}{N} \sum_{i=1}^N |x_{(i)} - y_{(i)}|\]
+        \item Nuance for circles: Since bearing is periodic $(0 \approx 2\pi)$, standard linear sorting fails. We can either (a) assume the distribution is unimodal and unroll it, or (b) use a circular transport solver. \textcolor{blue}{Figure out which approach to take!}
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Coverage \& fidelity (Manifold precision/recall)} \textcolor{brown}{Goal: Explicitly measure mode collapse vs. hallucination.}
+
+\begin{itemize}
+    \item \textbf{Coverage (Recall):} For every real valid solution, is there a generated solution nearby?\[\text{Coverage}(Q_\text{ground truth (gt)}, Q_{\text{model}}) = \frac{1}{|Q_{\text{gt}}|} \sum_{y \in Q_{\text{gt}}} \min_{x \in Q_{\text{model}}} || y - x||_2\]
+    \begin{itemize}
+        \item This measure the average distance from a ground truth sample to its nearest generated neighbor.
+        \item Interpretation: If this is high, the model has \textit{mode collapse} $\rightarrow$ there are valid regions of the solution space (ground truth) that the model is ignoring (no samples near them).
+    \end{itemize}
+    \item \textbf{Fidelity (Precision):} For every generated solution, is there a real valid solution nearby?\[\text{Fidelity}(Q_{\text{model}}, Q_\text{ground truth (gt)}) = \frac{1}{|Q_{\text{model}}|} \sum_{x \in Q_{\text{model}}} \min_{y \in Q_{\text{gt}}} || x-y||_2\]
+    \begin{itemize}
+        \item This measure the average distance from a generated sample to the manifold of valid ground truth samples. 
+        \item Interpretation: If this is high, the model is \textit{hallucinating} $\rightarrow$ it is generating samples in regions of the configuration space that are actually invalid/impossible according to the ground truth sampler.
+    \end{itemize}
+\end{itemize}
+
+% \begin{itemize}
+%     \item FK hand error: position and orientation
+%     \item Maximum mean discrepancy (MMD): TL;DR, MMD is defined by the idea of representing distances between distributions as distances between mean embeddings of features. 
+%     \item EMD:
+% \end{itemize}
+
 
 \section{Simplified problem v2.1: Round thing with a rotary 2-link arm, generalizable to different workspace sizes}
 
@@ -390,15 +535,6 @@ Read more on this!
 \end{itemize}
 
 \subsection{Training} Refer to section \ref{v2.0 training}.
-
-\subsection{Evaluation metrics}
-
-In addition to the ones introduced in section \ref{eval simple}, we add the following metrics:
-
-\begin{itemize}
-    \item Maximum mean discrepancy (MMD): TL;DR, MMD is defined by the idea of representing distances between distributions as distances between mean embeddings of features. 
-    \item EMD:
-\end{itemize}
 
 
 \section{Simplified problem v2.0: Round thing with a rotary 2-link arm} \label{v2.0}
